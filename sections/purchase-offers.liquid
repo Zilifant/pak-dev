@@ -1,0 +1,1324 @@
+{%- comment -%}
+  Purchase section for a product template: subscribe/one-time toggle, 1-4 unit offer
+  selection, live pricing, nutrition label modal and add to cart.
+
+  Offers are derived from real product data:
+  - a product with multiple variants renders one offer per variant (quantity 1)
+  - a single-variant product renders quantity tiers of that variant
+
+  Every price for every offer / selling-plan combination is formatted here in Liquid and
+  handed to `purchase-offers.js` as JSON, so the client never does currency math.
+{%- endcomment -%}
+
+{%- liquid
+  assign section_settings = section.settings
+  assign product_resource = product
+
+  if product_resource == blank and request.visual_preview_mode
+    assign product_resource = collections.all.products.first
+  endif
+-%}
+
+{%- if product_resource == blank -%}
+  {%- if request.design_mode -%}
+    <div class="section section--page-width purchase-offers">
+      <p class="purchase-offers__placeholder">
+        {{ 'products.product.unavailable' | t }} — add this section to a product template.
+      </p>
+    </div>
+  {%- endif -%}
+{%- else -%}
+  {%- liquid
+    assign use_currency = settings.currency_code_enabled_product_pages
+
+    # ---------------------------------------------------------------------------
+    # Offer source. More than one variant means the merchant has modelled the tub
+    # tiers as variants; otherwise fall back to quantity tiers of the only variant.
+    # ---------------------------------------------------------------------------
+    assign is_variant_mode = false
+    if product_resource.variants.size > 1
+      assign is_variant_mode = true
+    endif
+
+    assign offer_count = section_settings.offer_count
+    if is_variant_mode and product_resource.variants.size < offer_count
+      assign offer_count = product_resource.variants.size
+    endif
+
+    # ---------------------------------------------------------------------------
+    # Selling plans. Only the first group is used; a product can belong to several
+    # but a single purchase section can only present one subscription offer.
+    # ---------------------------------------------------------------------------
+    assign plan_group = product_resource.selling_plan_groups.first
+    assign selling_plans = plan_group.selling_plans
+    assign has_subscription = false
+    if selling_plans.size > 0
+      assign has_subscription = true
+    endif
+
+    assign allow_one_time = true
+    if product_resource.requires_selling_plan
+      assign allow_one_time = false
+    endif
+
+    assign default_plan_key = 'onetime'
+    if has_subscription and section_settings.default_plan == 'subscription'
+      assign default_plan_key = selling_plans.first.id
+    endif
+    if has_subscription and allow_one_time == false
+      assign default_plan_key = selling_plans.first.id
+    endif
+
+    assign days_per_unit = section_settings.days_per_unit
+  -%}
+
+  {%- comment -%}
+    Pass one: price every offer against every plan, capture the JSON payload, the
+    best available saving (for the heading) and the values the summary panel needs
+    on first paint.
+  {%- endcomment -%}
+  {%- liquid
+    assign max_savings = 0
+    assign fallback_offer = 0
+    assign default_offer = section_settings.default_offer
+    if default_offer > offer_count
+      assign default_offer = offer_count
+    endif
+  -%}
+
+  {%- capture offers_json -%}
+    [
+    {%- for position in (1..offer_count) -%}
+      {%- liquid
+        if is_variant_mode
+          assign offer_variant = product_resource.variants[forloop.index0]
+          assign offer_quantity = 1
+          assign units = offer_variant.option1 | split: ' ' | first | split: '-' | first | times: 1 | round
+          if units < 1
+            assign units = forloop.index
+          endif
+        else
+          assign offer_variant = product_resource.selected_or_first_available_variant
+          assign offer_quantity = forloop.index
+          assign units = forloop.index
+        endif
+
+        assign total_days = units | times: days_per_unit
+
+        assign one_time_total = offer_variant.price | times: offer_quantity
+        assign one_time_compare = 0
+        if offer_variant.compare_at_price > offer_variant.price
+          assign one_time_compare = offer_variant.compare_at_price | times: offer_quantity
+        endif
+
+        # The single-unit one-time price is the reference every saving is measured
+        # against, so a multi-tub offer shows its bundle saving even without a
+        # compare-at price on the variant.
+        if forloop.first
+          assign baseline_unit_price = one_time_total | divided_by: units
+        endif
+
+        assign reference_price = baseline_unit_price | times: units
+        if one_time_compare > reference_price
+          assign reference_price = one_time_compare
+        endif
+
+        # The first available offer is used when the configured default is sold out.
+        if offer_variant.available and fallback_offer == 0
+          assign fallback_offer = forloop.index
+        endif
+      -%}
+      {
+      "id": {{ forloop.index }},
+      "variantId": {{ offer_variant.id }},
+      "quantity": {{ offer_quantity }},
+      "available": {% if offer_variant.available %}true{% else %}false{% endif %},
+      "plans": {
+      {%- assign plan_index = 0 -%}
+      {%- for plan in selling_plans -%}
+        {%- liquid
+          assign allocation = null
+          for candidate in offer_variant.selling_plan_allocations
+            if candidate.selling_plan_id == plan.id
+              assign allocation = candidate
+              break
+            endif
+          endfor
+        -%}
+        {%- if allocation -%}
+          {%- liquid
+            assign plan_total = allocation.price | times: offer_quantity
+            assign plan_compare = 0
+            if allocation.compare_at_price > allocation.price
+              assign plan_compare = allocation.compare_at_price | times: offer_quantity
+            endif
+
+            assign plan_reference = reference_price
+            if plan_compare > plan_reference
+              assign plan_reference = plan_compare
+            endif
+
+            assign plan_save = 0
+            if plan_reference > plan_total
+              assign plan_save = plan_reference | minus: plan_total | times: 100 | divided_by: plan_reference | floor
+            endif
+            if plan_save > max_savings
+              assign max_savings = plan_save
+            endif
+
+            assign plan_per_unit = plan_total | divided_by: units
+            assign plan_per_day = plan_total | divided_by: total_days
+
+            if use_currency
+              assign plan_total_money = plan_total | money_with_currency
+              assign plan_compare_money = plan_compare | money_with_currency
+              assign plan_per_unit_money = plan_per_unit | money_with_currency
+              assign plan_per_day_money = plan_per_day | money_with_currency
+            else
+              assign plan_total_money = plan_total | money
+              assign plan_compare_money = plan_compare | money
+              assign plan_per_unit_money = plan_per_unit | money
+              assign plan_per_day_money = plan_per_day | money
+            endif
+
+            if plan_index > 0
+              echo ','
+            endif
+          -%}
+          "{{ plan.id }}": {
+          "total": {{ plan_total_money | strip | json }},
+          "compareAt": {% if plan_compare > 0 %}{{ plan_compare_money | strip | json }}{% else %}null{% endif %},
+          "perUnit": {{ plan_per_unit_money | strip | json }},
+          "perDay": {{ plan_per_day_money | strip | json }},
+          "save": {{ plan_save }}
+          }
+          {%- assign plan_index = plan_index | plus: 1 -%}
+        {%- endif -%}
+      {%- endfor -%}
+
+      {%- liquid
+        assign one_time_save = 0
+        if reference_price > one_time_total
+          assign one_time_save = reference_price | minus: one_time_total | times: 100 | divided_by: reference_price | floor
+        endif
+        if allow_one_time and one_time_save > max_savings
+          assign max_savings = one_time_save
+        endif
+
+        assign one_time_per_unit = one_time_total | divided_by: units
+        assign one_time_per_day = one_time_total | divided_by: total_days
+
+        if use_currency
+          assign one_time_total_money = one_time_total | money_with_currency
+          assign one_time_compare_money = one_time_compare | money_with_currency
+          assign one_time_per_unit_money = one_time_per_unit | money_with_currency
+          assign one_time_per_day_money = one_time_per_day | money_with_currency
+        else
+          assign one_time_total_money = one_time_total | money
+          assign one_time_compare_money = one_time_compare | money
+          assign one_time_per_unit_money = one_time_per_unit | money
+          assign one_time_per_day_money = one_time_per_day | money
+        endif
+
+        if plan_index > 0
+          echo ','
+        endif
+      -%}
+      "onetime": {
+      "total": {{ one_time_total_money | strip | json }},
+      "compareAt": {% if one_time_compare > 0 %}{{ one_time_compare_money | strip | json }}{% else %}null{% endif %},
+      "perUnit": {{ one_time_per_unit_money | strip | json }},
+      "perDay": {{ one_time_per_day_money | strip | json }},
+      "save": {{ one_time_save }}
+      }
+      }
+      }
+      {%- unless forloop.last -%},{%- endunless -%}
+    {%- endfor -%}
+    ]
+  {%- endcapture -%}
+
+  {%- liquid
+    assign default_variant = product_resource.selected_or_first_available_variant
+    if is_variant_mode
+      assign default_index = default_offer | minus: 1
+      assign default_variant = product_resource.variants[default_index]
+    endif
+
+    unless default_variant.available
+      assign default_offer = fallback_offer
+      if default_offer < 1
+        assign default_offer = 1
+      endif
+      if is_variant_mode
+        assign default_index = default_offer | minus: 1
+        assign default_variant = product_resource.variants[default_index]
+      endif
+    endunless
+
+    assign default_quantity = 1
+    unless is_variant_mode
+      assign default_quantity = default_offer
+    endunless
+
+    assign can_add_to_cart = default_variant.available
+    assign add_to_cart_text = section_settings.cta_label
+    if add_to_cart_text == blank
+      assign add_to_cart_text = 'actions.add_to_cart' | t
+    endif
+    assign sold_out_text = 'products.product.sold_out' | t
+
+    assign heading_text = section_settings.heading | replace: '[savings]', max_savings
+    assign form_id = 'PurchaseOffers-' | append: section.id
+  -%}
+
+  <script
+    src="{{ 'purchase-offers.js' | asset_url }}"
+    type="module"
+  ></script>
+
+  {% render 'add-to-cart-button-styles' %}
+  {% render 'fly-to-cart-styles' %}
+  {% render 'dialog-styles' %}
+
+  {%- liquid
+    if section_settings.background_color != blank
+      render 'contrast-override', background_color: section_settings.background_color, section_id: section.id
+    endif
+  -%}
+
+  <div class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"></div>
+
+  <purchase-offers-component
+    class="section section--page-width purchase-offers spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
+    data-add-to-cart-text="{{ add_to_cart_text | escape }}"
+    data-sold-out-text="{{ sold_out_text | escape }}"
+    data-default-plan="{{ default_plan_key }}"
+    style="
+      {%- render 'spacing-style', settings: section_settings %}
+      {%- if section_settings.accent_color != blank %}
+        --purchase-offers-accent: {{ section_settings.accent_color }};
+        --purchase-offers-accent-rgb: {{ section_settings.accent_color.rgb }};
+      {%- endif -%}
+    "
+    {% if request.visual_preview_mode %}
+      data-shopify-visual-preview
+    {% endif %}
+  >
+    <script
+      type="application/json"
+      ref="offerData"
+    >
+      {{ offers_json }}
+    </script>
+
+    <div class="purchase-offers__inner">
+      <header class="purchase-offers__header">
+        {%- if heading_text != blank -%}
+          <h2 class="purchase-offers__heading {{ section_settings.heading_preset }}">{{ heading_text }}</h2>
+        {%- endif -%}
+        {%- if section_settings.subheading != blank -%}
+          <p class="purchase-offers__subheading h5">{{ section_settings.subheading }}</p>
+        {%- endif -%}
+      </header>
+
+      {%- if has_subscription and allow_one_time -%}
+        <fieldset class="purchase-offers__plans">
+          <legend class="visually-hidden">{{ section_settings.plan_legend }}</legend>
+          {%- for plan_option in (1..2) -%}
+            {%- liquid
+              if forloop.first
+                assign plan_value = selling_plans.first.id
+                assign plan_label = section_settings.subscribe_label
+                assign plan_note = section_settings.subscribe_note
+              else
+                assign plan_value = 'onetime'
+                assign plan_label = section_settings.one_time_label
+                assign plan_note = blank
+              endif
+            -%}
+            <label class="purchase-offers__plan">
+              <input
+                type="radio"
+                class="purchase-offers__plan-input"
+                name="purchase-offers-plan-{{ section.id }}"
+                value="{{ plan_value }}"
+                ref="planInputs[]"
+                on:change="purchase-offers-component/handlePlanChange"
+                {% if plan_value == default_plan_key %}checked{% endif %}
+              >
+              <span class="purchase-offers__plan-inner">
+                <span class="purchase-offers__plan-label">{{ plan_label }}</span>
+                {%- if plan_note != blank -%}
+                  <span class="purchase-offers__plan-note">{{ plan_note }}</span>
+                {%- endif -%}
+              </span>
+            </label>
+          {%- endfor -%}
+        </fieldset>
+      {%- endif -%}
+
+      <fieldset class="purchase-offers__offers">
+        <legend class="visually-hidden">{{ section_settings.offers_legend }}</legend>
+        <div class="purchase-offers__cards">
+          {%- for position in (1..offer_count) -%}
+            {%- liquid
+              if is_variant_mode
+                assign card_variant = product_resource.variants[forloop.index0]
+                assign card_label = card_variant.option1 | default: card_variant.title
+                assign card_units = card_variant.option1 | split: ' ' | first | split: '-' | first | times: 1 | round
+                if card_units < 1
+                  assign card_units = forloop.index
+                endif
+              else
+                assign card_variant = product_resource.selected_or_first_available_variant
+                assign card_units = forloop.index
+                if card_units == 1
+                  assign card_label = card_units | append: ' ' | append: section_settings.unit_label_singular
+                else
+                  assign card_label = card_units | append: ' ' | append: section_settings.unit_label_plural
+                endif
+              endif
+
+              assign card_image = card_variant.featured_media.preview_image | default: product_resource.featured_image
+              assign is_most_popular = false
+              if section_settings.most_popular_offer == forloop.index
+                assign is_most_popular = true
+              endif
+            -%}
+            <label class="purchase-offers__card{% if is_most_popular %} purchase-offers__card--popular{% endif %}">
+              <input
+                type="radio"
+                class="purchase-offers__card-input"
+                name="purchase-offers-offer-{{ section.id }}"
+                value="{{ forloop.index }}"
+                ref="offerInputs[]"
+                on:change="purchase-offers-component/handleOfferChange"
+                {% if forloop.index == default_offer %}checked{% endif %}
+                {% unless card_variant.available %}disabled{% endunless %}
+              >
+              <span class="purchase-offers__card-inner">
+                {%- if is_most_popular and section_settings.most_popular_label != blank -%}
+                  <span class="purchase-offers__flag">{{ section_settings.most_popular_label }}</span>
+                {%- endif -%}
+                {%- if card_image -%}
+                  {{
+                    card_image
+                    | image_url: width: 320
+                    | image_tag:
+                      loading: 'lazy',
+                      widths: '120, 200, 320',
+                      sizes: '(min-width: 750px) 160px, 40vw',
+                      alt: card_label,
+                      class: 'purchase-offers__card-image'
+                  }}
+                {%- endif -%}
+                <span class="purchase-offers__card-label">{{ card_label }}</span>
+                <span
+                  class="purchase-offers__card-savings"
+                  ref="cardSavings[]"
+                  data-offer-id="{{ forloop.index }}"
+                  data-template="{{ section_settings.card_savings_label | escape }}"
+                  hidden
+                ></span>
+                {%- unless card_variant.available -%}
+                  <span class="purchase-offers__card-unavailable">{{ 'products.product.sold_out' | t }}</span>
+                {%- endunless -%}
+              </span>
+            </label>
+          {%- endfor -%}
+        </div>
+      </fieldset>
+
+      {%- if has_subscription and selling_plans.size > 1 -%}
+        <div
+          class="purchase-offers__frequency"
+          ref="frequencyField"
+          {% if default_plan_key == 'onetime' %}hidden{% endif %}
+        >
+          <label
+            class="purchase-offers__frequency-label"
+            for="PurchaseOffersFrequency-{{ section.id }}"
+          >
+            {{ section_settings.frequency_label }}
+          </label>
+          <select
+            id="PurchaseOffersFrequency-{{ section.id }}"
+            class="purchase-offers__frequency-select"
+            ref="frequency"
+            on:change="purchase-offers-component/handlePlanChange"
+          >
+            {%- for plan in selling_plans -%}
+              <option value="{{ plan.id }}">{{ plan.name }}</option>
+            {%- endfor -%}
+          </select>
+        </div>
+      {%- endif -%}
+
+      <div class="purchase-offers__summary">
+        <p
+          class="purchase-offers__savings"
+          ref="summarySavings"
+          data-template="{{ section_settings.savings_label | escape }}"
+          hidden
+        ></p>
+        <p class="purchase-offers__per-unit">
+          <span
+            class="purchase-offers__per-unit-price h3"
+            ref="summaryPerUnit"
+          ></span>
+          <span class="purchase-offers__per-unit-suffix">
+            {{- section_settings.per_unit_label | replace: '[unit]', section_settings.unit_label_singular -}}
+          </span>
+        </p>
+        <p class="purchase-offers__per-day">
+          <span
+            class="purchase-offers__per-day-price"
+            ref="summaryPerDay"
+          ></span>
+          {{ section_settings.per_day_label }}
+        </p>
+        <p class="purchase-offers__total">
+          <span class="purchase-offers__total-label">{{ section_settings.total_label }}</span>
+          <span class="purchase-offers__total-value">
+            <s
+              class="purchase-offers__compare-at"
+              ref="summaryCompareAt"
+              hidden
+            ></s>
+            <span ref="summaryTotal"></span>
+          </span>
+        </p>
+      </div>
+
+      {%- if section_settings.subscription_note != blank -%}
+        <p
+          class="purchase-offers__note"
+          ref="subscriptionNote"
+          {% if default_plan_key == 'onetime' %}hidden{% endif %}
+        >
+          {{ section_settings.subscription_note }}
+        </p>
+      {%- endif -%}
+
+      {%- if section_settings.show_nutrition_label -%}
+        <dialog-component class="purchase-offers__nutrition">
+          <button
+            type="button"
+            class="button-unstyled purchase-offers__nutrition-button"
+            on:click="/showDialog"
+          >
+            {{- section_settings.nutrition_label_text -}}
+            <span class="svg-wrapper">{{- 'icon-external.svg' | inline_asset_content -}}</span>
+          </button>
+
+          <dialog
+            ref="dialog"
+            class="purchase-offers__nutrition-dialog dialog-modal color-custom-popover"
+            scroll-lock
+            aria-labelledby="PurchaseOffersNutrition-{{ section.id }}"
+          >
+            <h3
+              id="PurchaseOffersNutrition-{{ section.id }}"
+              class="purchase-offers__nutrition-heading h5"
+            >
+              {{ section_settings.nutrition_heading }}
+            </h3>
+            {%- if section_settings.nutrition_image != blank -%}
+              {{
+                section_settings.nutrition_image
+                | image_url: width: 1200
+                | image_tag:
+                  loading: 'lazy',
+                  widths: '400, 700, 1000, 1200',
+                  sizes: '(min-width: 750px) 600px, 90vw',
+                  alt: section_settings.nutrition_heading,
+                  class: 'purchase-offers__nutrition-image'
+              }}
+            {%- endif -%}
+            {%- if section_settings.nutrition_content != blank -%}
+              <div class="purchase-offers__nutrition-content rte">{{ section_settings.nutrition_content }}</div>
+            {%- endif -%}
+            <button
+              ref="closeButton"
+              type="button"
+              class="button-unstyled close-button purchase-offers__nutrition-close"
+              on:click="/closeDialog"
+              aria-label="{{ 'accessibility.close_dialog' | t }}"
+            >
+              {{- 'icon-close.svg' | inline_asset_content -}}
+            </button>
+          </dialog>
+        </dialog-component>
+      {%- endif -%}
+
+      <product-form-component
+        class="purchase-offers__form"
+        data-section-id="{{ section.id }}"
+        data-product-id="{{ product_resource.id }}"
+        data-product-url="{{ product_resource.url }}"
+        data-quantity-default="{{ default_quantity }}"
+        data-quantity-error-max="{{ 'products.product.quantity_error_max' | t }}"
+        on:submit="/handleSubmit"
+      >
+        <div
+          class="visually-hidden"
+          aria-live="assertive"
+          role="status"
+          aria-atomic="true"
+          ref="liveRegion"
+        ></div>
+
+        {%- form 'product', product_resource, id: form_id, data-type: 'add-to-cart-form' -%}
+          <input
+            type="hidden"
+            name="id"
+            ref="variantId"
+            value="{{ default_variant.id }}"
+          >
+          <input
+            type="hidden"
+            name="quantity"
+            value="{{ default_quantity }}"
+          >
+          {%- if has_subscription -%}
+            <input
+              type="hidden"
+              name="selling_plan"
+              value="{% unless default_plan_key == 'onetime' %}{{ default_plan_key }}{% endunless %}"
+              {% if default_plan_key == 'onetime' %}
+                disabled
+              {% endif %}
+            >
+          {%- endif -%}
+
+          <div class="product-form-buttons purchase-offers__buttons">
+            <span
+              class="product-form-text__error hidden"
+              ref="addToCartTextError"
+            >
+              <span class="svg-wrapper">{{- 'icon-error.svg' | inline_asset_content -}}</span>
+            </span>
+
+            {%- comment -%}
+              Mirrors snippets/add-to-cart-button.liquid, with the label wrapped so the
+              selected offer's availability can swap it without touching the icon markup.
+            {%- endcomment -%}
+            {%- liquid
+              assign button_media = default_variant.featured_media.preview_image | default: product_resource.featured_media.preview_image
+              assign button_media_url = button_media | image_url: width: 100
+            -%}
+            <add-to-cart-component
+              ref="addToCartButtonContainer"
+              data-product-variant-media="{{ button_media_url }}"
+              data-add-to-cart-animation="{{ settings.add_to_cart_animation }}"
+            >
+              <button
+                id="PurchaseOffers-Submit-{{ section.id }}"
+                type="submit"
+                name="add"
+                ref="addToCartButton"
+                on:click="/handleClick"
+                class="button add-to-cart-button purchase-offers__cta"
+                {% unless can_add_to_cart %}
+                  disabled
+                {% endunless %}
+              >
+                <span data-cta-label>
+                  {%- if can_add_to_cart -%}{{ add_to_cart_text }}{%- else -%}{{ sold_out_text }}{%- endif -%}
+                </span>
+                <span class="add-to-cart__added">
+                  <span class="svg-wrapper add-to-cart__added-icon">
+                    {{- 'icon-checkmark-burst.svg' | inline_asset_content -}}
+                  </span>
+                </span>
+              </button>
+            </add-to-cart-component>
+          </div>
+        {%- endform -%}
+      </product-form-component>
+
+      {%- if section_settings.guarantee_text != blank -%}
+        <p class="purchase-offers__guarantee">
+          <span class="svg-wrapper">{{- 'icon-checkmark.svg' | inline_asset_content -}}</span>
+          {{ section_settings.guarantee_text }}
+        </p>
+      {%- endif -%}
+
+      {%- if section_settings.supporting_text != blank -%}
+        <div class="purchase-offers__supporting rte">{{ section_settings.supporting_text }}</div>
+      {%- endif -%}
+    </div>
+  </purchase-offers-component>
+{%- endif -%}
+
+{% stylesheet %}
+  .purchase-offers {
+    --purchase-offers-accent: var(--color-foreground);
+    --purchase-offers-accent-rgb: var(--color-foreground-rgb);
+    --purchase-offers-radius: var(--style-border-radius-md);
+  }
+
+  /*
+   * The radios stay focusable but invisible. `.visually-hidden` is not used here
+   * because it un-hides on focus, which would reveal a native radio on top of
+   * the card it controls.
+   */
+  .purchase-offers__plan-input,
+  .purchase-offers__card-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .purchase-offers [hidden] {
+    display: none !important;
+  }
+
+  .purchase-offers__placeholder {
+    padding-block: var(--padding-4xl);
+    text-align: center;
+  }
+
+  .purchase-offers__inner {
+    display: grid;
+    gap: var(--gap-xl);
+    margin-inline: auto;
+    width: 100%;
+    max-width: 40rem;
+  }
+
+  .purchase-offers__header {
+    display: grid;
+    gap: var(--gap-2xs);
+    text-align: center;
+  }
+
+  .purchase-offers__heading,
+  .purchase-offers__subheading {
+    margin: 0;
+  }
+
+  .purchase-offers__subheading {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-subdued-text));
+  }
+
+  /* Subscribe & save / one-time segmented control */
+  .purchase-offers__plans {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap-2xs);
+    margin: 0;
+    border: 0;
+    padding: var(--padding-3xs);
+    border-radius: var(--purchase-offers-radius);
+    background-color: rgb(var(--color-foreground-rgb) / 0.05);
+  }
+
+  .purchase-offers__plan {
+    display: block;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .purchase-offers__plan-inner {
+    display: grid;
+    gap: var(--gap-3xs);
+    justify-items: center;
+    padding: var(--padding-sm) var(--padding-xs);
+    border-radius: calc(var(--purchase-offers-radius) - 2px);
+    text-align: center;
+    transition: background-color var(--animation-speed) var(--animation-easing);
+  }
+
+  .purchase-offers__plan-label {
+    font-size: var(--font-size--sm);
+    font-weight: 600;
+  }
+
+  .purchase-offers__plan-note {
+    font-size: var(--font-size--2xs);
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+  }
+
+  .purchase-offers__plan-input:checked ~ .purchase-offers__plan-inner {
+    background-color: var(--color-background);
+    box-shadow: var(--shadow-button);
+  }
+
+  .purchase-offers__plan-input:focus-visible ~ .purchase-offers__plan-inner {
+    outline: var(--focus-outline-width) solid var(--color-foreground);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  /* Offer cards */
+  .purchase-offers__offers {
+    margin: 0;
+    border: 0;
+    padding: 0;
+  }
+
+  .purchase-offers__cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap-sm);
+  }
+
+  @media screen and (min-width: 750px) {
+    .purchase-offers__cards {
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    }
+  }
+
+  .purchase-offers__card {
+    display: block;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .purchase-offers__card:has(.purchase-offers__card-input:disabled) {
+    cursor: not-allowed;
+    opacity: var(--opacity-50);
+  }
+
+  .purchase-offers__card-inner {
+    display: grid;
+    gap: var(--gap-2xs);
+    justify-items: center;
+    height: 100%;
+    padding: var(--padding-lg) var(--padding-xs) var(--padding-md);
+    border: 2px solid rgb(var(--color-foreground-rgb) / var(--opacity-15));
+    border-radius: var(--purchase-offers-radius);
+    background-color: var(--color-background);
+    text-align: center;
+    transition: border-color var(--animation-speed) var(--animation-easing);
+  }
+
+  .purchase-offers__card--popular .purchase-offers__card-inner {
+    padding-block-start: var(--padding-2xl);
+  }
+
+  .purchase-offers__card-input:checked ~ .purchase-offers__card-inner {
+    border-color: var(--purchase-offers-accent);
+    box-shadow: 0 0 0 1px var(--purchase-offers-accent);
+  }
+
+  .purchase-offers__card-input:focus-visible ~ .purchase-offers__card-inner {
+    outline: var(--focus-outline-width) solid var(--color-foreground);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  .purchase-offers__flag {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    padding-block: var(--badge-rectangle-padding-block, 2px);
+    border-start-start-radius: calc(var(--purchase-offers-radius) - 2px);
+    border-start-end-radius: calc(var(--purchase-offers-radius) - 2px);
+    background-color: var(--purchase-offers-accent);
+    color: var(--color-background);
+    font-size: var(--font-size--3xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .purchase-offers__card-image {
+    width: 100%;
+    max-width: 6rem;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .purchase-offers__card-label {
+    font-size: var(--font-size--sm);
+    font-weight: 600;
+  }
+
+  .purchase-offers__card-savings,
+  .purchase-offers__card-unavailable {
+    font-size: var(--font-size--2xs);
+  }
+
+  .purchase-offers__card-savings {
+    color: var(--purchase-offers-accent);
+    font-weight: 600;
+  }
+
+  .purchase-offers__card-unavailable {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+  }
+
+  /* Delivery frequency */
+  .purchase-offers__frequency {
+    display: grid;
+    gap: var(--gap-2xs);
+  }
+
+  .purchase-offers__frequency-label {
+    font-size: var(--font-size--sm);
+  }
+
+  .purchase-offers__frequency-select {
+    width: 100%;
+    padding: var(--padding-sm) var(--padding-md);
+    border: var(--style-border-width-inputs) solid var(--color-input-border);
+    border-radius: var(--style-border-radius-inputs);
+    background-color: var(--color-input-background);
+    color: var(--color-input-text);
+    font-size: var(--font-size--sm);
+  }
+
+  /* Price summary */
+  .purchase-offers__summary {
+    display: grid;
+    gap: var(--gap-2xs);
+    padding: var(--padding-lg);
+    border-radius: var(--purchase-offers-radius);
+    background-color: rgb(var(--color-foreground-rgb) / 0.05);
+    text-align: center;
+  }
+
+  .purchase-offers__summary p {
+    margin: 0;
+  }
+
+  .purchase-offers__savings {
+    color: var(--purchase-offers-accent);
+    font-size: var(--font-size--sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .purchase-offers__per-unit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--gap-2xs);
+  }
+
+  .purchase-offers__per-unit-price {
+    margin: 0;
+  }
+
+  .purchase-offers__per-unit-suffix,
+  .purchase-offers__per-day {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+    font-size: var(--font-size--sm);
+  }
+
+  .purchase-offers__total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--gap-xs);
+    margin-block-start: var(--margin-xs) !important;
+    padding-block-start: var(--padding-sm);
+    border-block-start: var(--style-border-width) solid rgb(var(--color-foreground-rgb) / var(--opacity-15));
+    text-align: start;
+    font-weight: 600;
+  }
+
+  .purchase-offers__total-value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--gap-xs);
+  }
+
+  .purchase-offers__compare-at {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+    font-weight: 400;
+  }
+
+  .purchase-offers__note {
+    margin: 0;
+    padding: var(--padding-xs) var(--padding-md);
+    border-radius: var(--style-border-radius-pills);
+    background-color: rgb(var(--purchase-offers-accent-rgb) / var(--opacity-10));
+    color: var(--purchase-offers-accent);
+    font-size: var(--font-size--sm);
+    text-align: center;
+  }
+
+  /* Nutrition label */
+  .purchase-offers__nutrition {
+    display: block;
+    text-align: center;
+  }
+
+  .purchase-offers__nutrition-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-2xs);
+    font-size: var(--font-size--sm);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .purchase-offers__nutrition-dialog {
+    position: relative;
+    max-height: var(--modal-max-height, 90dvh);
+    padding: var(--padding-4xl) var(--padding-xl) var(--padding-xl);
+    border-radius: var(--style-border-radius-popover);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    overflow-y: auto;
+  }
+
+  .purchase-offers__nutrition-heading {
+    margin-block: 0 var(--margin-lg);
+  }
+
+  .purchase-offers__nutrition-image {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .purchase-offers__nutrition-content {
+    margin-block-start: var(--margin-lg);
+  }
+
+  .purchase-offers__nutrition-close {
+    position: absolute;
+    inset-block-start: var(--padding-md);
+    inset-inline-end: var(--padding-md);
+  }
+
+  /* Add to cart */
+  .purchase-offers__buttons {
+    display: grid;
+  }
+
+  .purchase-offers__cta {
+    width: 100%;
+  }
+
+  .purchase-offers__guarantee {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-2xs);
+    margin: 0;
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-subdued-text));
+    font-size: var(--font-size--sm);
+  }
+
+  .purchase-offers__guarantee .svg-wrapper svg {
+    width: 1em;
+    height: 1em;
+  }
+
+  .purchase-offers__supporting {
+    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+    font-size: var(--font-size--xs);
+    text-align: center;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Purchase offers",
+  "tag": "section",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Offers are built from the current product. A product with multiple variants shows one offer per variant; a single-variant product shows quantity tiers. Subscription pricing comes from the product's first selling plan group."
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Buy Now to Save Up to [savings]% Off!",
+      "info": "Use [savings] to insert the best available discount percentage."
+    },
+    {
+      "type": "select",
+      "id": "heading_preset",
+      "label": "Heading size",
+      "options": [
+        { "value": "h2", "label": "Large" },
+        { "value": "h3", "label": "Medium" },
+        { "value": "h4", "label": "Small" }
+      ],
+      "default": "h3"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Choose Your Offer"
+    },
+    {
+      "type": "header",
+      "content": "Purchase type"
+    },
+    {
+      "type": "text",
+      "id": "subscribe_label",
+      "label": "Subscription label",
+      "default": "Subscribe & Save"
+    },
+    {
+      "type": "text",
+      "id": "subscribe_note",
+      "label": "Subscription sublabel",
+      "default": "Cancel anytime"
+    },
+    {
+      "type": "text",
+      "id": "one_time_label",
+      "label": "One-time label",
+      "default": "One-Time"
+    },
+    {
+      "type": "select",
+      "id": "default_plan",
+      "label": "Default purchase type",
+      "options": [
+        { "value": "subscription", "label": "Subscription" },
+        { "value": "onetime", "label": "One-time" }
+      ],
+      "default": "subscription",
+      "info": "Falls back to one-time when the product has no selling plans."
+    },
+    {
+      "type": "text",
+      "id": "frequency_label",
+      "label": "Delivery frequency label",
+      "default": "Delivery frequency",
+      "info": "Only shown when the subscription has more than one frequency."
+    },
+    {
+      "type": "text",
+      "id": "plan_legend",
+      "label": "Purchase type group label",
+      "default": "Choose a purchase type",
+      "info": "Read by screen readers."
+    },
+    {
+      "type": "header",
+      "content": "Offers"
+    },
+    {
+      "type": "range",
+      "id": "offer_count",
+      "label": "Offers to show",
+      "min": 2,
+      "max": 4,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "default_offer",
+      "label": "Offer selected by default",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "most_popular_offer",
+      "label": "\"Most popular\" offer",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "default": 4,
+      "info": "Set to 0 to hide the flag."
+    },
+    {
+      "type": "text",
+      "id": "most_popular_label",
+      "label": "\"Most popular\" flag text",
+      "default": "Most Popular"
+    },
+    {
+      "type": "text",
+      "id": "card_savings_label",
+      "label": "Offer savings text",
+      "default": "Save [savings]%"
+    },
+    {
+      "type": "text",
+      "id": "offers_legend",
+      "label": "Offer group label",
+      "default": "Choose your offer",
+      "info": "Read by screen readers."
+    },
+    {
+      "type": "text",
+      "id": "unit_label_singular",
+      "label": "Unit name (singular)",
+      "default": "tub"
+    },
+    {
+      "type": "text",
+      "id": "unit_label_plural",
+      "label": "Unit name (plural)",
+      "default": "tubs"
+    },
+    {
+      "type": "range",
+      "id": "days_per_unit",
+      "label": "Days of supply per unit",
+      "min": 7,
+      "max": 120,
+      "step": 1,
+      "unit": "d",
+      "default": 30,
+      "info": "Used to work out the per-day price."
+    },
+    {
+      "type": "header",
+      "content": "Price summary"
+    },
+    {
+      "type": "text",
+      "id": "savings_label",
+      "label": "Savings text",
+      "default": "You're Getting [savings]% Off"
+    },
+    {
+      "type": "text",
+      "id": "per_unit_label",
+      "label": "Per-unit text",
+      "default": "per [unit]",
+      "info": "Use [unit] to insert the singular unit name."
+    },
+    {
+      "type": "text",
+      "id": "per_day_label",
+      "label": "Per-day text",
+      "default": "per day"
+    },
+    {
+      "type": "text",
+      "id": "total_label",
+      "label": "Total text",
+      "default": "Total today"
+    },
+    {
+      "type": "text",
+      "id": "subscription_note",
+      "label": "Subscription note",
+      "default": "Your subscription includes free gifts today!",
+      "info": "Only shown when a subscription is selected."
+    },
+    {
+      "type": "header",
+      "content": "Nutrition label"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_nutrition_label",
+      "label": "Show nutrition label link",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "nutrition_label_text",
+      "label": "Link text",
+      "default": "View Nutrition Label"
+    },
+    {
+      "type": "text",
+      "id": "nutrition_heading",
+      "label": "Popup heading",
+      "default": "Nutrition label"
+    },
+    {
+      "type": "image_picker",
+      "id": "nutrition_image",
+      "label": "Nutrition label image"
+    },
+    {
+      "type": "richtext",
+      "id": "nutrition_content",
+      "label": "Popup text"
+    },
+    {
+      "type": "header",
+      "content": "Add to cart"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Button text",
+      "default": "Start Risk-Free"
+    },
+    {
+      "type": "text",
+      "id": "guarantee_text",
+      "label": "Guarantee text",
+      "default": "90-Day Money-Back Guarantee"
+    },
+    {
+      "type": "richtext",
+      "id": "supporting_text",
+      "label": "Supporting text",
+      "default": "<p>Free shipping on every order. Cancel or change your subscription anytime.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "placeholder": "Default"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "{{ settings.color_palette.foreground }}",
+      "info": "Used for the selected offer, the \"most popular\" flag and savings."
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48
+    }
+  ],
+  "presets": [
+    {
+      "name": "Purchase offers",
+      "category": "Product"
+    }
+  ]
+}
+{% endschema %}
