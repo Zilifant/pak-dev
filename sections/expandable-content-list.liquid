@@ -13,7 +13,9 @@
   endif
 -%}
 
-<div class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"></div>
+<div
+  class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
+></div>
 
 <div
   class="section section--page-width offer-section expandable-content-list spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
@@ -239,8 +241,8 @@
         {
           "type": "metaobject",
           "id": "content_reference",
-          "label": "Mushroom metaobject",
-          "metaobject_type": "mushroom",
+          "label": "Ingredient metaobject",
+          "metaobject_type": "Ingredient",
           "info": "Expected field handles: image, title, subtitle and description. When selected, this entry replaces all content entered below."
         },
         {
@@ -256,7 +258,7 @@
           "type": "text",
           "id": "title",
           "label": "Title",
-          "default": "Mushroom name"
+          "default": "Name"
         },
         {
           "type": "text",
@@ -281,49 +283,56 @@
           "type": "item",
           "settings": {
             "title": "Lion's Mane",
-            "subtitle": "Nerve Regeneration Powerhouse"
+            "subtitle": "Nerve Regeneration Powerhouse",
+            "description": "<p>Lion's Mane is often featured in wellness blends designed to support focus and everyday nerve health. Describe why it was selected, how much is included, and what makes your source distinctive.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Cordyceps",
-            "subtitle": "Muscle Support Guardian"
+            "subtitle": "Muscle Support Guardian",
+            "description": "<p>Cordyceps is commonly associated with energy, endurance, and active-day support. Use this area to explain how it complements movement and recovery in your formula.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Chaga",
-            "subtitle": "Cellular Defense Shield"
+            "subtitle": "Cellular Defense Shield",
+            "description": "<p>Chaga is valued for naturally occurring antioxidant compounds and its role in daily wellness routines. Add details about sourcing, preparation, and how it supports the broader blend.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Reishi",
-            "subtitle": "Natural Disc & Nerve Strengthener"
+            "subtitle": "Natural Disc & Nerve Strengthener",
+            "description": "<p>Reishi has a long history of use in calming and restorative wellness formulas. Explain how it fits into your product's approach to resilience, rest, or whole-body support.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Turkey Tail",
-            "subtitle": "Gut & Immune Protector"
+            "subtitle": "Gut & Immune Protector",
+            "description": "<p>Turkey Tail is often included in formulas centered on digestive and immune wellness. Share what makes your extract unique and how it works alongside the other ingredients.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Shiitake & Maitake",
-            "subtitle": "Recovery Accelerators"
+            "subtitle": "Recovery Accelerators",
+            "description": "<p>Shiitake and Maitake bring complementary mushroom nutrients to a balanced daily blend. Describe their intended contribution to recovery, vitality, or general wellness.</p>"
           }
         },
         {
           "type": "item",
           "settings": {
             "title": "Turmeric",
-            "subtitle": "Inflammation Fighter"
+            "subtitle": "Inflammation Fighter",
+            "description": "<p>Turmeric is widely used in active-lifestyle formulas that support a healthy inflammatory response. Use this space to describe the ingredient form, sourcing, and role in your product.</p>"
           }
         }
       ]
