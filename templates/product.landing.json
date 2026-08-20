@@ -16,7 +16,7 @@
         "heading_preset": "h3",
         "subheading": "Choose Your Offer",
         "subscribe_label": "Subscribe & Save",
-        "subscribe_note": "Cancel anytime",
+        "subscribe_note": "",
         "one_time_label": "One-Time",
         "default_plan": "subscription",
         "frequency_label": "Delivery frequency",
@@ -43,9 +43,14 @@
         "guarantee_text": "90-Day Money-Back Guarantee",
         "supporting_text": "<p>Free shipping on every order. Cancel or change your subscription anytime.</p>",
         "background_color": "",
-        "accent_color": "{{ settings.color_palette.foreground }}",
+        "accent_color": "#b98a4b",
         "padding-block-start": 48,
-        "padding-block-end": 48
+        "padding-block-end": 48,
+        "show_card_images": false,
+        "show_card_savings": false,
+        "surface_color": "#fdf1de",
+        "ink_color": "#2a1f17",
+        "on_ink_color": "#ffffff"
       }
     }
   },
