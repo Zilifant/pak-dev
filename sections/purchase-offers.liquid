@@ -241,6 +241,25 @@
   {%- endcapture -%}
 
   {%- liquid
+    # The flagged offer leads the row. Reordering here rather than with CSS `order` keeps
+    # DOM order, arrow-key order and visual order in agreement.
+    assign most_popular = section_settings.most_popular_offer
+    assign leads_with_flag = false
+    if most_popular >= 1 and most_popular <= offer_count
+      assign leads_with_flag = true
+    endif
+
+    assign card_order = ''
+    if leads_with_flag
+      assign card_order = most_popular | append: ','
+    endif
+    for position in (1..offer_count)
+      unless position == most_popular
+        assign card_order = card_order | append: position | append: ','
+      endunless
+    endfor
+    assign card_order = card_order | split: ','
+
     assign default_variant = product_resource.selected_or_first_available_variant
     if is_variant_mode
       assign default_index = default_offer | minus: 1
@@ -270,7 +289,16 @@
     endif
     assign sold_out_text = 'products.product.sold_out' | t
 
-    assign heading_text = section_settings.heading | replace: '[savings]', max_savings
+    # With no compare-at price, no bundle discount and no discounted selling plan there is
+    # nothing to claim, so the heading falls back rather than advertising "0% Off".
+    assign heading_text = section_settings.heading
+    if heading_text contains '[savings]'
+      if max_savings > 0
+        assign heading_text = heading_text | replace: '[savings]', max_savings
+      else
+        assign heading_text = section_settings.heading_no_savings
+      endif
+    endif
     assign form_id = 'PurchaseOffers-' | append: section.id
   -%}
 
@@ -301,6 +329,7 @@
     style="
       {%- render 'spacing-style', settings: section_settings %}
       --purchase-offers-columns: {{ offer_count }};
+      --purchase-offers-columns-rest: {{ offer_count | minus: 1 }};
       {%- if section_settings.surface_color != blank %}
         --purchase-offers-surface: {{ section_settings.surface_color }};
       {%- endif -%}
@@ -340,6 +369,14 @@
       {%- if has_subscription and allow_one_time -%}
         <fieldset class="purchase-offers__plans">
           <legend class="visually-hidden">{{ section_settings.plan_legend }}</legend>
+          {%- comment -%}
+            Decorative sliding fill. The checked radio drives its position, so it tracks
+            keyboard and pointer selection alike without any JavaScript.
+          {%- endcomment -%}
+          <span
+            class="purchase-offers__plans-thumb"
+            aria-hidden="true"
+          ></span>
           {%- for plan_option in (1..2) -%}
             {%- liquid
               if forloop.first
@@ -377,24 +414,26 @@
 
       <fieldset class="purchase-offers__offers">
         <legend class="visually-hidden">{{ section_settings.offers_legend }}</legend>
-        <div class="purchase-offers__cards">
-          {%- for position in (1..offer_count) -%}
+        <div class="purchase-offers__cards{% if leads_with_flag %} purchase-offers__cards--lead{% endif %}">
+          {%- for card_position in card_order -%}
             {%- liquid
+              assign offer_index = card_position | times: 1
+              assign variant_index = offer_index | minus: 1
               assign card_has_count = true
 
               if is_variant_mode
-                assign card_variant = product_resource.variants[forloop.index0]
+                assign card_variant = product_resource.variants[variant_index]
                 assign card_label = card_variant.option1 | default: card_variant.title
                 assign card_units = card_variant.option1 | split: ' ' | first | split: '-' | first | times: 1 | round
                 # An option value with no leading number ("Trial size") has no count to show,
                 # so the card falls back to the option value itself.
                 if card_units < 1
-                  assign card_units = forloop.index
+                  assign card_units = offer_index
                   assign card_has_count = false
                 endif
               else
                 assign card_variant = product_resource.selected_or_first_available_variant
-                assign card_units = forloop.index
+                assign card_units = offer_index
                 if card_units == 1
                   assign card_label = card_units | append: ' ' | append: section_settings.unit_label_singular
                 else
@@ -409,7 +448,7 @@
 
               assign card_image = card_variant.featured_media.preview_image | default: product_resource.featured_image
               assign is_most_popular = false
-              if section_settings.most_popular_offer == forloop.index
+              if most_popular == offer_index
                 assign is_most_popular = true
               endif
             -%}
@@ -418,11 +457,11 @@
                 type="radio"
                 class="purchase-offers__card-input"
                 name="purchase-offers-offer-{{ section.id }}"
-                value="{{ forloop.index }}"
+                value="{{ offer_index }}"
                 ref="offerInputs[]"
                 aria-label="{{ card_label }}{% unless card_variant.available %} - {{ 'products.product.sold_out' | t }}{% endunless %}"
                 on:change="purchase-offers-component/handleOfferChange"
-                {% if forloop.index == default_offer %}
+                {% if offer_index == default_offer %}
                   checked
                 {% endif %}
                 {% unless card_variant.available %}
@@ -455,7 +494,7 @@
                   <span
                     class="purchase-offers__card-savings"
                     ref="cardSavings[]"
-                    data-offer-id="{{ forloop.index }}"
+                    data-offer-id="{{ offer_index }}"
                     data-template="{{ section_settings.card_savings_label | escape }}"
                     hidden
                   ></span>
@@ -695,10 +734,41 @@
 {%- endif -%}
 
 {% stylesheet %}
+  .purchase-offers {
+    /* Overridden per section by the colour settings; these are the design defaults. */
+    --purchase-offers-surface: #fdf1de;
+    --purchase-offers-ink: #2a1f17;
+    --purchase-offers-ink-rgb: 42 31 23;
+    --purchase-offers-on-ink: #ffffff;
+    --purchase-offers-accent: #b98a4b;
+    --purchase-offers-accent-rgb: 185 138 75;
+
+    --purchase-offers-muted: rgb(var(--purchase-offers-ink-rgb) / 0.62);
+    --purchase-offers-radius: var(--style-border-radius-lg);
+    --purchase-offers-radius-pill: 999px;
+
+    /* Gap between the toggle track and the fill that slides inside it. */
+    --purchase-offers-track-padding: var(--padding-2xs);
+    /* Width of the flagged offer relative to the others, floored at its flag's width. */
+    --purchase-offers-lead-flex: 1.3fr;
+    /* Inset of the toggle from the surrounding content. */
+    --purchase-offers-track-inset: var(--margin-2xl);
+  }
+
+  @media screen and (min-width: 750px) {
+    .purchase-offers {
+      --purchase-offers-track-inset: var(--margin-6xl);
+    }
+  }
+
+  .purchase-offers [hidden] {
+    display: none !important;
+  }
+
   /*
    * The radios stay focusable but invisible. `.visually-hidden` is not used here
    * because it un-hides on focus, which would reveal a native radio on top of
-   * the card it controls.
+   * the control it drives.
    */
   .purchase-offers__plan-input,
   .purchase-offers__card-input {
@@ -707,10 +777,6 @@
     height: 1px;
     opacity: 0;
     pointer-events: none;
-  }
-
-  .purchase-offers [hidden] {
-    display: none !important;
   }
 
   .purchase-offers__placeholder {
@@ -718,27 +784,24 @@
     text-align: center;
   }
 
-  /*
-   * The radios stay focusable but invisible. `.visually-hidden` is not used here
-   * because it un-hides on focus, which would reveal a native radio on top of
-   * the card it controls.
-   */
-  .purchase-offers__plan-input,
-  .purchase-offers__card-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .purchase-offers [hidden] {
-    display: none !important;
-  }
-
   .purchase-offers__inner {
     display: grid;
     gap: var(--gap-lg);
+    margin-inline: auto;
+    width: 100%;
+    max-width: 34rem;
+    color: var(--purchase-offers-ink);
+  }
+
+  .purchase-offers__header {
+    display: grid;
+    gap: var(--gap-2xs);
+    text-align: center;
+  }
+
+  .purchase-offers__heading,
+  .purchase-offers__subheading {
+    margin: 0;
   }
 
   .purchase-offers__subheading {
@@ -752,16 +815,71 @@
   .purchase-offers__plans {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 0;
+    position: relative;
+    margin-block: var(--margin-2xs);
+    margin-inline: var(--purchase-offers-track-inset);
     border: 0;
     padding: var(--purchase-offers-track-padding);
     border-radius: var(--purchase-offers-radius-pill);
     background-color: var(--purchase-offers-surface);
   }
 
+  /*
+   * Exactly one half of the track's content box, so translating it by its own
+   * width lands it precisely over the second option.
+   */
+  .purchase-offers__plans-thumb {
+    position: absolute;
+    z-index: 0;
+    inset-block: var(--purchase-offers-track-padding);
+    inset-inline-start: var(--purchase-offers-track-padding);
+    width: calc((100% - var(--purchase-offers-track-padding) * 2) / 2);
+    border-radius: var(--purchase-offers-radius-pill);
+    background-color: var(--purchase-offers-ink);
+  }
+
+  .purchase-offers__plans:has(.purchase-offers__plan:last-of-type .purchase-offers__plan-input:checked)
+    .purchase-offers__plans-thumb {
+    transform: translateX(100%);
+  }
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    .purchase-offers__plans-thumb {
+      transition: transform var(--animation-speed-slow) var(--ease-out-quad);
+    }
+
+    .purchase-offers__plan-inner {
+      transition: color var(--animation-speed) var(--animation-easing);
+    }
+  }
+
+  /*
+   * base.css styles `label:has(input[type='radio'])` as inline-flex (specificity 0,1,2).
+   * These need two classes to outrank it, otherwise the inner span becomes a flex item
+   * and shrinks to its text instead of filling the half.
+   */
+  .purchase-offers .purchase-offers__plan {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  /*
+   * Two rows: a zero-height one the flag overflows out of, and the fill. The flag still
+   * contributes its width to the card's intrinsic size — so the lead track grows to
+   * contain it — while contributing no height, leaving every card the same height.
+   */
+  .purchase-offers .purchase-offers__card {
+    display: grid;
+    grid-template-rows: 0 1fr;
+    align-items: stretch;
+    gap: 0;
+  }
+
   .purchase-offers__plan {
-    display: block;
     position: relative;
+    z-index: 1;
     cursor: pointer;
   }
 
@@ -769,11 +887,10 @@
     display: grid;
     gap: var(--gap-3xs);
     justify-items: center;
-    padding: var(--padding-md) var(--padding-xs);
+    padding-block: var(--padding-xs);
+    padding-inline: var(--padding-xs);
     border-radius: var(--purchase-offers-radius-pill);
     text-align: center;
-    transition: background-color var(--animation-speed) var(--animation-easing),
-      color var(--animation-speed) var(--animation-easing);
   }
 
   .purchase-offers__plan-label {
@@ -787,7 +904,6 @@
   }
 
   .purchase-offers__plan-input:checked ~ .purchase-offers__plan-inner {
-    background-color: var(--purchase-offers-ink);
     color: var(--purchase-offers-on-ink);
   }
 
@@ -813,8 +929,18 @@
     gap: var(--gap-xs);
   }
 
+  /*
+   * The flagged offer leads and takes an `auto` track, so it is sized by its own
+   * max-content — which includes the flag, since the flag is in flow. The remaining
+   * tracks share what is left and shrink to accommodate it.
+   */
+  .purchase-offers__cards--lead {
+    grid-template-columns:
+      minmax(max-content, var(--purchase-offers-lead-flex, 1.3fr))
+      repeat(var(--purchase-offers-columns-rest, 3), minmax(0, 1fr));
+  }
+
   .purchase-offers__card {
-    display: block;
     position: relative;
     cursor: pointer;
   }
@@ -829,8 +955,7 @@
     gap: var(--gap-3xs);
     align-content: center;
     justify-items: center;
-    height: 100%;
-    width: 100%;
+    grid-row: 2;
     padding: var(--padding-md) var(--padding-2xs);
     border-radius: var(--purchase-offers-radius);
     background-color: var(--purchase-offers-surface);
@@ -865,12 +990,15 @@
     color: rgb(255 255 255 / var(--opacity-70));
   }
 
-  /* Sits above the card, overlapping its top edge */
+  /* Straddles the card's top edge, out of the zero-height first row. */
   .purchase-offers__flag {
-    position: absolute;
+    grid-row: 1;
+    justify-self: center;
+    /* Without this the flag stretches to the zero-height row and its text spills out. */
+    align-self: start;
     z-index: 1;
-    inset-block-start: calc(var(--font-size--3xs) * -0.85);
-    inset-inline-end: calc(var(--padding-2xs) * -1);
+    transform: translateY(-50%);
+    width: fit-content;
     padding: var(--padding-3xs) var(--padding-xs);
     border-radius: var(--purchase-offers-radius-pill);
     background-color: var(--purchase-offers-accent);
@@ -1052,13 +1180,17 @@
     display: grid;
   }
 
+  .purchase-offers__cta {
+    width: 100%;
+  }
+
   .purchase-offers__guarantee {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--gap-2xs);
     margin: 0;
-    color: rgb(var(--color-foreground-rgb) / var(--opacity-subdued-text));
+    color: var(--purchase-offers-muted);
     font-size: var(--font-size--sm);
   }
 
@@ -1068,7 +1200,7 @@
   }
 
   .purchase-offers__supporting {
-    color: rgb(var(--color-foreground-rgb) / var(--opacity-muted-text));
+    color: var(--purchase-offers-muted);
     font-size: var(--font-size--xs);
     text-align: center;
   }
@@ -1096,6 +1228,13 @@
       "label": "Heading",
       "default": "Buy Now to Save Up to [savings]% Off!",
       "info": "Use [savings] to insert the best available discount percentage."
+    },
+    {
+      "type": "text",
+      "id": "heading_no_savings",
+      "label": "Heading when there is no discount",
+      "default": "Buy Now",
+      "info": "Replaces the heading when the product has no compare-at price, no bundle discount and no discounted selling plan. Leave blank to hide the heading."
     },
     {
       "type": "select",
@@ -1181,7 +1320,7 @@
       "min": 1,
       "max": 4,
       "step": 1,
-      "default": 2
+      "default": 4
     },
     {
       "type": "range",
@@ -1191,7 +1330,7 @@
       "max": 4,
       "step": 1,
       "default": 4,
-      "info": "Set to 0 to hide the flag."
+      "info": "The flagged offer is shown first and sized to fit its flag. Set to 0 to hide the flag and keep the natural order."
     },
     {
       "type": "text",

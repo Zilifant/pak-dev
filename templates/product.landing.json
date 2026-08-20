@@ -22,7 +22,7 @@
         "frequency_label": "Delivery frequency",
         "plan_legend": "Choose a purchase type",
         "offer_count": 4,
-        "default_offer": 2,
+        "default_offer": 4,
         "most_popular_offer": 4,
         "most_popular_label": "Most Popular",
         "show_card_images": false,
