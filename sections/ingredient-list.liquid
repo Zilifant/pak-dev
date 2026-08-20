@@ -1,5 +1,5 @@
 {%- comment -%}
-  Expandable image-and-copy cards. Each block can use a `mushroom` metaobject
+  Ingredient image-and-copy cards. Each block can use an `Ingredient` metaobject
   with image, title, subtitle and description fields, or its own fallback settings.
 {%- endcomment -%}
 
@@ -18,7 +18,7 @@
 ></div>
 
 <div
-  class="section section--page-width offer-section expandable-content-list spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
+  class="section section--page-width offer-section ingredient-list spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
   style="
     {%- render 'spacing-style', settings: section_settings %}
     --offer-section-surface: {{ section_settings.card_color }};
@@ -28,16 +28,16 @@
     --offer-section-accent: {{ section_settings.accent_color }};
   "
 >
-  <div class="offer-section__inner expandable-content-list__inner">
+  <div class="offer-section__inner ingredient-list__inner">
     {%- if section_settings.title != blank or section_settings.subtitle != blank -%}
-      <header class="offer-section__header expandable-content-list__header">
+      <header class="offer-section__header ingredient-list__header">
         {%- if section_settings.title != blank -%}
-          <h2 class="offer-section__header-copy expandable-content-list__title {{ section_settings.heading_preset }}">
+          <h2 class="offer-section__header-copy ingredient-list__title {{ section_settings.heading_preset }}">
             {{ section_settings.title }}
           </h2>
         {%- endif -%}
         {%- if section_settings.subtitle != blank -%}
-          <p class="offer-section__header-copy expandable-content-list__subtitle">
+          <p class="offer-section__header-copy ingredient-list__subtitle">
             {{ section_settings.subtitle | escape }}
           </p>
         {%- endif -%}
@@ -45,7 +45,7 @@
     {%- endif -%}
 
     {%- if section.blocks.size > 0 -%}
-      <div class="expandable-content-list__items">
+      <div class="ingredient-list__items">
         {%- for block in section.blocks -%}
           {%- liquid
             assign content_reference = block.settings.content_reference
@@ -64,12 +64,12 @@
           -%}
 
           <details
-            class="expandable-content-list__item{% if item_image == blank %} expandable-content-list__item--no-image{% endif %}"
+            class="ingredient-list__item{% if item_image == blank %} ingredient-list__item--no-image{% endif %}"
             {{ block.shopify_attributes }}
           >
-            <summary class="expandable-content-list__summary{% if item_image == blank %} expandable-content-list__summary--no-image{% endif %}">
+            <summary class="ingredient-list__summary{% if item_image == blank %} ingredient-list__summary--no-image{% endif %}">
               {%- if item_image != blank -%}
-                <span class="expandable-content-list__image-wrapper">
+                <span class="ingredient-list__image-wrapper">
                   {{
                     item_image
                     | image_url: width: 132
@@ -78,26 +78,26 @@
                       widths: '44, 88, 132',
                       sizes: '44px',
                       alt: '',
-                      class: 'expandable-content-list__image'
+                      class: 'ingredient-list__image'
                   }}
                 </span>
               {%- endif -%}
 
-              <span class="expandable-content-list__copy">
+              <span class="ingredient-list__copy">
                 {%- if item_title != blank -%}
-                  <span class="expandable-content-list__item-title">{{ item_title | escape }}</span>
+                  <span class="ingredient-list__item-title">{{ item_title | escape }}</span>
                 {%- endif -%}
                 {%- if item_subtitle != blank -%}
-                  <span class="expandable-content-list__item-subtitle">{{ item_subtitle | escape }}</span>
+                  <span class="ingredient-list__item-subtitle">{{ item_subtitle | escape }}</span>
                 {%- endif -%}
               </span>
 
-              <span class="expandable-content-list__icon" aria-hidden="true"></span>
+              <span class="ingredient-list__icon" aria-hidden="true"></span>
             </summary>
 
-            <div class="expandable-content-list__content">
-              <div class="expandable-content-list__content-inner">
-                <div class="expandable-content-list__description rte">
+            <div class="ingredient-list__content">
+              <div class="ingredient-list__content-inner">
+                <div class="ingredient-list__description rte">
                   {%- if content_reference != blank -%}
                     {{ item_description | metafield_tag }}
                   {%- else -%}
@@ -113,7 +113,7 @@
 
     {%- if section_settings.button_text != blank and section_settings.button_url != blank -%}
       <a
-        class="offer-section__cta expandable-content-list__button"
+        class="offer-section__cta ingredient-list__button"
         href="{{ section_settings.button_url }}"
       >
         {{ section_settings.button_text | escape }}
