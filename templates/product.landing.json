@@ -87,6 +87,7 @@
           "type": "item",
           "settings": {
             "content_reference": "",
+            "image": "shopify://shop_images/c4a88972-5cd6-43bd-9264-5a71bf6ffad3.png",
             "title": "Reishi",
             "subtitle": "Natural Disc & Nerve Strengthener",
             "description": "<p>Reishi has a long history of use in calming and restorative wellness formulas. Explain how it fits into your product's approach to resilience, rest, or whole-body support.</p>"
@@ -96,6 +97,7 @@
           "type": "item",
           "settings": {
             "content_reference": "",
+            "image": "shopify://shop_images/446a2560-cfe5-4821-ad3d-4925648ece70.png",
             "title": "Turkey Tail",
             "subtitle": "Gut & Immune Protector",
             "description": "<p>Turkey Tail is often included in formulas centered on digestive and immune wellness. Share what makes your extract unique and how it works alongside the other ingredients.</p>"
@@ -105,6 +107,7 @@
           "type": "item",
           "settings": {
             "content_reference": "",
+            "image": "shopify://shop_images/f5022e35-42df-4408-b92a-560b06555948.png",
             "title": "Shiitake & Maitake",
             "subtitle": "Recovery Accelerators",
             "description": "<p>Shiitake and Maitake bring complementary mushroom nutrients to a balanced daily blend. Describe their intended contribution to recovery, vitality, or general wellness.</p>"
@@ -114,6 +117,7 @@
           "type": "item",
           "settings": {
             "content_reference": "",
+            "image": "shopify://shop_images/8b518854-f095-4dc5-8332-1a2e5d32c844.png",
             "title": "Turmeric",
             "subtitle": "Inflammation Fighter",
             "description": "<p>Turmeric is widely used in active-lifestyle formulas that support a healthy inflammatory response. Use this space to describe the ingredient form, sourcing, and role in your product.</p>"
