@@ -10,6 +10,8 @@
   handed to `purchase-offers.js` as JSON, so the client never does currency math.
 {%- endcomment -%}
 
+{{ 'offer-sections.css' | asset_url | stylesheet_tag }}
+
 {%- liquid
   assign section_settings = section.settings
   assign product_resource = product
@@ -292,7 +294,7 @@
   ></div>
 
   <purchase-offers-component
-    class="section section--page-width purchase-offers spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
+    class="section section--page-width offer-section purchase-offers spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
     data-add-to-cart-text="{{ add_to_cart_text | escape }}"
     data-sold-out-text="{{ sold_out_text | escape }}"
     data-default-plan="{{ default_plan_key }}"
@@ -325,13 +327,13 @@
       {{ offers_json }}
     </script>
 
-    <div class="purchase-offers__inner">
-      <header class="purchase-offers__header">
+    <div class="offer-section__inner purchase-offers__inner">
+      <header class="offer-section__header purchase-offers__header">
         {%- if heading_text != blank -%}
-          <h2 class="purchase-offers__heading {{ section_settings.heading_preset }}">{{ heading_text }}</h2>
+          <h2 class="offer-section__header-copy purchase-offers__heading {{ section_settings.heading_preset }}">{{ heading_text }}</h2>
         {%- endif -%}
         {%- if section_settings.subheading != blank -%}
-          <p class="purchase-offers__subheading">{{ section_settings.subheading }}</p>
+          <p class="offer-section__header-copy purchase-offers__subheading">{{ section_settings.subheading }}</p>
         {%- endif -%}
       </header>
 
@@ -659,7 +661,7 @@
                 name="add"
                 ref="addToCartButton"
                 on:click="/handleClick"
-                class="button add-to-cart-button purchase-offers__cta"
+                class="button add-to-cart-button offer-section__cta purchase-offers__cta"
                 {% unless can_add_to_cart %}
                   disabled
                 {% endunless %}
@@ -693,21 +695,6 @@
 {%- endif -%}
 
 {% stylesheet %}
-  .purchase-offers {
-    /* Overridden per section by the colour settings; these are the design defaults. */
-    --purchase-offers-surface: #fdf1de;
-    --purchase-offers-ink: #2a1f17;
-    --purchase-offers-ink-rgb: 42 31 23;
-    --purchase-offers-on-ink: #ffffff;
-    --purchase-offers-accent: #b98a4b;
-    --purchase-offers-accent-rgb: 185 138 75;
-
-    --purchase-offers-muted: rgb(var(--purchase-offers-ink-rgb) / 0.62);
-    --purchase-offers-radius: var(--style-border-radius-lg);
-    --purchase-offers-radius-pill: 999px;
-    --purchase-offers-track-padding: var(--padding-3xs);
-  }
-
   /*
    * The radios stay focusable but invisible. `.visually-hidden` is not used here
    * because it un-hides on focus, which would reveal a native radio on top of
@@ -752,21 +739,6 @@
   .purchase-offers__inner {
     display: grid;
     gap: var(--gap-lg);
-    margin-inline: auto;
-    width: 100%;
-    max-width: 34rem;
-    color: var(--purchase-offers-ink);
-  }
-
-  .purchase-offers__header {
-    display: grid;
-    gap: var(--gap-2xs);
-    text-align: center;
-  }
-
-  .purchase-offers__heading,
-  .purchase-offers__subheading {
-    margin: 0;
   }
 
   .purchase-offers__subheading {
@@ -1078,10 +1050,6 @@
   /* Add to cart */
   .purchase-offers__buttons {
     display: grid;
-  }
-
-  .purchase-offers__cta {
-    width: 100%;
   }
 
   .purchase-offers__guarantee {
