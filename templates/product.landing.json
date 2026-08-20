@@ -68,19 +68,19 @@
         "item_NFVpDr": {
           "type": "item",
           "settings": {
-            "content_reference": "",
-            "title": "Cordyceps",
-            "subtitle": "Muscle Support Guardian",
-            "description": "<p>Cordyceps is commonly associated with energy, endurance, and active-day support. Use this area to explain how it complements movement and recovery in your formula.</p>"
+            "content_reference": "cordyceps",
+            "title": "",
+            "subtitle": "",
+            "description": ""
           }
         },
         "item_D6jkHp": {
           "type": "item",
           "settings": {
-            "content_reference": "",
-            "title": "Chaga",
-            "subtitle": "Cellular Defense Shield",
-            "description": "<p>Chaga is valued for naturally occurring antioxidant compounds and its role in daily wellness routines. Add details about sourcing, preparation, and how it supports the broader blend.</p>"
+            "content_reference": "chaga",
+            "title": "",
+            "subtitle": "",
+            "description": ""
           }
         },
         "item_3bhnaQ": {
