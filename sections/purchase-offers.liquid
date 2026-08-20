@@ -287,7 +287,9 @@
     endif
   -%}
 
-  <div class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"></div>
+  <div
+    class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
+  ></div>
 
   <purchase-offers-component
     class="section section--page-width purchase-offers spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
@@ -356,7 +358,9 @@
                 value="{{ plan_value }}"
                 ref="planInputs[]"
                 on:change="purchase-offers-component/handlePlanChange"
-                {% if plan_value == default_plan_key %}checked{% endif %}
+                {% if plan_value == default_plan_key %}
+                  checked
+                {% endif %}
               >
               <span class="purchase-offers__plan-inner">
                 <span class="purchase-offers__plan-label">{{ plan_label }}</span>
@@ -416,8 +420,12 @@
                 ref="offerInputs[]"
                 aria-label="{{ card_label }}{% unless card_variant.available %} - {{ 'products.product.sold_out' | t }}{% endunless %}"
                 on:change="purchase-offers-component/handleOfferChange"
-                {% if forloop.index == default_offer %}checked{% endif %}
-                {% unless card_variant.available %}disabled{% endunless %}
+                {% if forloop.index == default_offer %}
+                  checked
+                {% endif %}
+                {% unless card_variant.available %}
+                  disabled
+                {% endunless %}
               >
               {%- if is_most_popular and section_settings.most_popular_label != blank -%}
                 <span class="purchase-offers__flag">{{ section_settings.most_popular_label }}</span>
@@ -463,7 +471,9 @@
         <div
           class="purchase-offers__frequency"
           ref="frequencyField"
-          {% if default_plan_key == 'onetime' %}hidden{% endif %}
+          {% if default_plan_key == 'onetime' %}
+            hidden
+          {% endif %}
         >
           <label
             class="purchase-offers__frequency-label"
@@ -524,7 +534,9 @@
         <p
           class="purchase-offers__note"
           ref="subscriptionNote"
-          {% if default_plan_key == 'onetime' %}hidden{% endif %}
+          {% if default_plan_key == 'onetime' %}
+            hidden
+          {% endif %}
         >
           {{ section_settings.subscription_note }}
         </p>
@@ -846,6 +858,7 @@
     align-content: center;
     justify-items: center;
     height: 100%;
+    width: 100%;
     padding: var(--padding-md) var(--padding-2xs);
     border-radius: var(--purchase-offers-radius);
     background-color: var(--purchase-offers-surface);
