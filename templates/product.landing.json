@@ -25,6 +25,8 @@
         "default_offer": 2,
         "most_popular_offer": 4,
         "most_popular_label": "Most Popular",
+        "show_card_images": false,
+        "show_card_savings": false,
         "card_savings_label": "Save [savings]%",
         "offers_legend": "Choose your offer",
         "unit_label_singular": "tub",
@@ -43,18 +45,109 @@
         "guarantee_text": "90-Day Money-Back Guarantee",
         "supporting_text": "<p>Free shipping on every order. Cancel or change your subscription anytime.</p>",
         "background_color": "",
-        "accent_color": "#b98a4b",
-        "padding-block-start": 48,
-        "padding-block-end": 48,
-        "show_card_images": false,
-        "show_card_savings": false,
         "surface_color": "#fdf1de",
         "ink_color": "#2a1f17",
-        "on_ink_color": "#ffffff"
+        "on_ink_color": "#ffffff",
+        "accent_color": "#b98a4b",
+        "padding-block-start": 48,
+        "padding-block-end": 48
+      }
+    },
+    "ingredient_list_Y8xtrU": {
+      "type": "ingredient-list",
+      "blocks": {
+        "item_KX4B76": {
+          "type": "item",
+          "settings": {
+            "content_reference": "lions-mane",
+            "title": "",
+            "subtitle": "",
+            "description": ""
+          }
+        },
+        "item_NFVpDr": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Cordyceps",
+            "subtitle": "Muscle Support Guardian",
+            "description": "<p>Cordyceps is commonly associated with energy, endurance, and active-day support. Use this area to explain how it complements movement and recovery in your formula.</p>"
+          }
+        },
+        "item_D6jkHp": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Chaga",
+            "subtitle": "Cellular Defense Shield",
+            "description": "<p>Chaga is valued for naturally occurring antioxidant compounds and its role in daily wellness routines. Add details about sourcing, preparation, and how it supports the broader blend.</p>"
+          }
+        },
+        "item_3bhnaQ": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Reishi",
+            "subtitle": "Natural Disc & Nerve Strengthener",
+            "description": "<p>Reishi has a long history of use in calming and restorative wellness formulas. Explain how it fits into your product's approach to resilience, rest, or whole-body support.</p>"
+          }
+        },
+        "item_7BgtP4": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Turkey Tail",
+            "subtitle": "Gut & Immune Protector",
+            "description": "<p>Turkey Tail is often included in formulas centered on digestive and immune wellness. Share what makes your extract unique and how it works alongside the other ingredients.</p>"
+          }
+        },
+        "item_KEfAP8": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Shiitake & Maitake",
+            "subtitle": "Recovery Accelerators",
+            "description": "<p>Shiitake and Maitake bring complementary mushroom nutrients to a balanced daily blend. Describe their intended contribution to recovery, vitality, or general wellness.</p>"
+          }
+        },
+        "item_bAGj3L": {
+          "type": "item",
+          "settings": {
+            "content_reference": "",
+            "title": "Turmeric",
+            "subtitle": "Inflammation Fighter",
+            "description": "<p>Turmeric is widely used in active-lifestyle formulas that support a healthy inflammatory response. Use this space to describe the ingredient form, sourcing, and role in your product.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "item_KX4B76",
+        "item_NFVpDr",
+        "item_D6jkHp",
+        "item_3bhnaQ",
+        "item_7BgtP4",
+        "item_KEfAP8",
+        "item_bAGj3L"
+      ],
+      "name": "Ingredient list",
+      "settings": {
+        "title": "7 Mushrooms. One Mission.",
+        "heading_preset": "h3",
+        "subtitle": "Tap any mushroom to learn how it helps.",
+        "button_text": "Start Protecting My Dog's Spine",
+        "button_url": "shopify://collections/all",
+        "background_color": "#fff1d2",
+        "card_color": "#fffaf0",
+        "ink_color": "#2a1f17",
+        "button_text_color": "#ffffff",
+        "accent_color": "#8a5c2f",
+        "padding-block-start": 28,
+        "padding-block-end": 32
       }
     }
   },
   "order": [
-    "purchase_offers"
+    "purchase_offers",
+    "ingredient_list_Y8xtrU"
   ]
 }
