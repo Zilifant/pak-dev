@@ -9,65 +9,6 @@
  */
 {
   "sections": {
-    "purchase_offers": {
-      "type": "purchase-offers",
-      "settings": {
-        "subheading": "Choose Your Offer",
-        "subscribe_label": "Subscribe & Save",
-        "subscribe_note": "",
-        "one_time_label": "One-Time",
-        "default_plan": "subscription",
-        "frequency_label": "Delivery frequency",
-        "plan_legend": "Choose a purchase type",
-        "offer_count": 4,
-        "default_offer": 4,
-        "most_popular_offer": 4,
-        "most_popular_label": "Most Popular",
-        "show_card_images": false,
-        "show_card_savings": false,
-        "card_savings_label": "Save [savings]%",
-        "offers_legend": "Choose your offer",
-        "unit_label_singular": "tub",
-        "unit_label_plural": "tubs",
-        "days_per_unit": 30,
-        "savings_label": "You're Getting [savings]% Off",
-        "per_unit_label": "per [unit]",
-        "per_day_label": "per day",
-        "total_label": "Total today",
-        "show_nutrition_label": true,
-        "nutrition_label_text": "View Nutrition Label",
-        "nutrition_heading": "Nutrition label",
-        "nutrition_content": "",
-        "cta_label": "Start Risk-Free",
-        "supporting_text": "<p>90-Day Money-Back Guarantee. Cancel or change your subscription anytime.</p>",
-        "background_color": "",
-        "surface_color": "#fdf1de",
-        "ink_color": "#2a1f17",
-        "on_ink_color": "#ffffff",
-        "accent_color": "#b98a4b",
-        "padding-block-start": 48,
-        "padding-block-end": 48
-      },
-      "blocks": {
-        "gifts": {
-          "type": "_purchase-offers-gifts",
-          "static": true,
-          "settings": {
-            "gift_metaobject_type": "gift_with_purchase",
-            "gifts_note_subscription": "Your subscription includes [rewards] today!",
-            "gifts_note_one_time": "Subscribe to get [potential]",
-            "gifts_note_no_subscription": "Your purchase includes [rewards] today!",
-            "gifts_note_none": "Add more to unlock your free gifts",
-            "gift_word_singular": "free gift",
-            "gift_word_plural": "free gifts",
-            "shipping_reward_label": "free shipping",
-            "rewards_join_word": "and",
-            "gifts_up_to_word": "up to"
-          },
-          "blocks": {}
-        }
-      }
-    },
     "ingredient_list_Y8xtrU": {
       "type": "ingredient-list",
       "blocks": {
@@ -163,10 +104,69 @@
         "padding-block-start": 28,
         "padding-block-end": 32
       }
+    },
+    "purchase_offers": {
+      "type": "purchase-offers",
+      "settings": {
+        "subheading": "Choose Your Offer",
+        "subscribe_label": "Subscribe & Save",
+        "subscribe_note": "",
+        "one_time_label": "One-Time",
+        "default_plan": "subscription",
+        "frequency_label": "Delivery frequency",
+        "plan_legend": "Choose a purchase type",
+        "offer_count": 4,
+        "default_offer": 4,
+        "most_popular_offer": 4,
+        "most_popular_label": "Most Popular",
+        "show_card_images": false,
+        "show_card_savings": false,
+        "card_savings_label": "Save [savings]%",
+        "offers_legend": "Choose your offer",
+        "unit_label_singular": "tub",
+        "unit_label_plural": "tubs",
+        "days_per_unit": 30,
+        "savings_label": "You're Getting [savings]% Off",
+        "per_unit_label": "per [unit]",
+        "per_day_label": "per day",
+        "total_label": "Total today",
+        "show_nutrition_label": true,
+        "nutrition_label_text": "View Nutrition Label",
+        "nutrition_heading": "Nutrition label",
+        "nutrition_content": "",
+        "cta_label": "Start Risk-Free",
+        "supporting_text": "<p>90-Day Money-Back Guarantee. Cancel or change your subscription anytime.</p>",
+        "background_color": "",
+        "surface_color": "#fdf1de",
+        "ink_color": "#2a1f17",
+        "on_ink_color": "#ffffff",
+        "accent_color": "#b98a4b",
+        "padding-block-start": 48,
+        "padding-block-end": 48
+      },
+      "blocks": {
+        "gifts": {
+          "type": "_purchase-offers-gifts",
+          "static": true,
+          "settings": {
+            "gift_metaobject_type": "gift_with_purchase",
+            "gifts_note_subscription": "Your subscription includes [rewards] today!",
+            "gifts_note_one_time": "Subscribe to get [potential]",
+            "gifts_note_no_subscription": "Your purchase includes [rewards] today!",
+            "gifts_note_none": "Add more to unlock your free gifts",
+            "gift_word_singular": "free gift",
+            "gift_word_plural": "free gifts",
+            "shipping_reward_label": "free shipping",
+            "rewards_join_word": "and",
+            "gifts_up_to_word": "up to"
+          },
+          "blocks": {}
+        }
+      }
     }
   },
   "order": [
-    "purchase_offers",
-    "ingredient_list_Y8xtrU"
+    "ingredient_list_Y8xtrU",
+    "purchase_offers"
   ]
 }
