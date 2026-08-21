@@ -731,13 +731,6 @@
         {%- endform -%}
       </product-form-component>
 
-      {%- if section_settings.guarantee_text != blank -%}
-        <p class="purchase-offers__guarantee">
-          <span class="svg-wrapper">{{- 'icon-checkmark.svg' | inline_asset_content -}}</span>
-          {{ section_settings.guarantee_text }}
-        </p>
-      {%- endif -%}
-
       {%- if section_settings.supporting_text != blank -%}
         <div class="purchase-offers__supporting rte">{{ section_settings.supporting_text }}</div>
       {%- endif -%}
@@ -1198,21 +1191,6 @@
     margin-block-end: var(--gap-xs);
   }
 
-  .purchase-offers__guarantee {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--gap-2xs);
-    margin: 0;
-    color: var(--offer-section-muted);
-    font-size: var(--font-size--sm);
-  }
-
-  .purchase-offers__guarantee .svg-wrapper svg {
-    width: 1em;
-    height: 1em;
-  }
-
   .purchase-offers__supporting {
     color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
@@ -1453,16 +1431,11 @@
       "default": "Start Risk-Free"
     },
     {
-      "type": "text",
-      "id": "guarantee_text",
-      "label": "Guarantee text",
-      "default": "90-Day Money-Back Guarantee"
-    },
-    {
       "type": "richtext",
       "id": "supporting_text",
       "label": "Supporting text",
-      "default": "<p>Free shipping on every order. Cancel or change your subscription anytime.</p>"
+      "default": "<p>90-Day Money-Back Guarantee. Free shipping on every order. Cancel or change your subscription anytime.</p>",
+      "info": "Reads as one line under the button. Keep it to a single paragraph."
     },
     {
       "type": "header",
