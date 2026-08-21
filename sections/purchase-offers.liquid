@@ -308,7 +308,8 @@
     assign gifts = gift_definition.values
     assign gift_order = ''
     for gift in gifts
-      assign padded = gift.threshold.value | default: 0 | prepend: '0000000000' | slice: -10, 10
+      assign sort_threshold = gift.threshold.value | default: gift.threshold | times: 1
+      assign padded = sort_threshold | prepend: '0000000000' | slice: -10, 10
       assign gift_order = gift_order | append: padded | append: '-' | append: forloop.index0 | append: ','
     endfor
     assign gift_order = gift_order | split: ',' | sort
@@ -620,12 +621,33 @@
             {%- for entry in gift_order -%}
               {%- liquid
                 assign gift_index = entry | split: '-' | last | times: 1
-                assign gift = gifts[gift_index]
-                assign gift_threshold = gift.threshold.value | default: 0
-                assign gift_image = gift.image.value
 
+                # The metaobject values collection supports iteration but not index
+                # access, so the entry is selected by walking rather than `gifts[i]`.
+                assign gift = nil
+                for candidate in gifts
+                  if forloop.index0 == gift_index
+                    assign gift = candidate
+                    break
+                  endif
+                endfor
+
+                # Metaobject fields are metafield drops, so `.value` is the documented
+                # accessor. Falling back to the field itself costs nothing and keeps the
+                # card populated if a field is exposed directly instead.
+                assign gift_title = gift.title.value | default: gift.title
+                assign gift_subtitle = gift.subtitle.value | default: gift.subtitle
+                assign gift_image = gift.image.value | default: gift.image
+                assign gift_threshold = gift.threshold.value | default: gift.threshold | times: 1
+
+                # `blank` also matches false, but both branches yield false there, so the
+                # fallback cannot flip a genuinely false flag to true.
+                assign gift_sub_only_raw = gift.subscription_only.value
+                if gift_sub_only_raw == blank
+                  assign gift_sub_only_raw = gift.subscription_only
+                endif
                 assign gift_subscription_only = false
-                if gift.subscription_only.value
+                if gift_sub_only_raw == true
                   assign gift_subscription_only = true
                 endif
 
@@ -639,6 +661,9 @@
                   assign gift_unlocked = false
                 endif
               -%}
+              {%- if gift == blank -%}
+                {%- continue -%}
+              {%- endif -%}
               <li
                 class="purchase-offers__gift"
                 ref="gifts[]"
@@ -660,11 +685,11 @@
                     }}
                   {%- endif -%}
                 </span>
-                {%- if gift.title.value != blank -%}
-                  <span class="purchase-offers__gift-title">{{ gift.title.value }}</span>
+                {%- if gift_title != blank -%}
+                  <span class="purchase-offers__gift-title">{{ gift_title }}</span>
                 {%- endif -%}
-                {%- if gift.subtitle.value != blank -%}
-                  <span class="purchase-offers__gift-subtitle">{{ gift.subtitle.value }}</span>
+                {%- if gift_subtitle != blank -%}
+                  <span class="purchase-offers__gift-subtitle">{{ gift_subtitle }}</span>
                 {%- endif -%}
                 <span
                   class="visually-hidden"
@@ -681,9 +706,6 @@
           </ul>
         </div>
       {%- elsif request.design_mode -%}
-        {%- comment -%}
-          Only merchants in the theme editor see this; the storefront stays silent.
-        {%- endcomment -%}
         <p class="purchase-offers__gifts-empty">
           {%- if gift_definition == blank -%}
             No metaobject definition named
@@ -859,6 +881,7 @@
     --purchase-offers-accent-rgb: 185 138 75;
 
     --purchase-offers-muted: rgb(var(--purchase-offers-ink-rgb) / 0.62);
+    --purchase-offers-gift-border: rgb(var(--purchase-offers-ink-rgb) / 0.25);
     --purchase-offers-radius: var(--style-border-radius-lg);
     --purchase-offers-radius-pill: 999px;
 
@@ -1261,9 +1284,16 @@
     list-style: none;
   }
 
+  /*
+   * `align-content: start` packs each gift's rows to the top of its stretched grid area,
+   * so every image sits on the same line and a longer title or subtitle simply extends
+   * downwards instead of pushing the row out of alignment.
+   */
   .purchase-offers__gift {
     display: grid;
+    grid-template-rows: auto auto 1fr;
     gap: var(--gap-3xs);
+    align-content: start;
     justify-items: center;
     text-align: center;
   }
@@ -1286,6 +1316,7 @@
     width: 100%;
     aspect-ratio: 1;
     margin-block-end: var(--margin-2xs);
+    border: var(--style-border-width) solid var(--purchase-offers-gift-border);
     border-radius: var(--purchase-offers-radius);
     background-color: var(--purchase-offers-surface);
     overflow: hidden;
