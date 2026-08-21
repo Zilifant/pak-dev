@@ -2,9 +2,9 @@
   Purchase section for a product template: subscribe/one-time toggle, 1-4 unit offer
   selection, live pricing, nutrition label modal and add to cart.
 
-  Offers are derived from real product data:
-  - a product with multiple variants renders one offer per variant (quantity 1)
-  - a single-variant product renders quantity tiers of that variant
+  Offers are quantity tiers of the product's selected variant, priced from real product
+  data. The buttons are a quantity selector only; a multi-variant product would need its
+  own picker rather than overloading them.
 
   Every price for every offer / selling-plan combination is formatted here in Liquid and
   handed to `purchase-offers.js` as JSON, so the client never does currency math.
@@ -33,19 +33,10 @@
   {%- liquid
     assign use_currency = settings.currency_code_enabled_product_pages
 
-    # ---------------------------------------------------------------------------
-    # Offer source. More than one variant means the merchant has modelled the tub
-    # tiers as variants; otherwise fall back to quantity tiers of the only variant.
-    # ---------------------------------------------------------------------------
-    assign is_variant_mode = false
-    if product_resource.variants.size > 1
-      assign is_variant_mode = true
-    endif
-
+    # The offers are quantity tiers of a single variant. Multi-variant products would
+    # need their own picker rather than overloading these buttons.
+    assign offer_variant = product_resource.selected_or_first_available_variant
     assign offer_count = section_settings.offer_count
-    if is_variant_mode and product_resource.variants.size < offer_count
-      assign offer_count = product_resource.variants.size
-    endif
 
     # ---------------------------------------------------------------------------
     # Selling plans. Only the first group is used; a product can belong to several
@@ -80,7 +71,6 @@
     on first paint.
   {%- endcomment -%}
   {%- liquid
-    assign fallback_offer = 0
     assign default_offer = section_settings.default_offer
     if default_offer > offer_count
       assign default_offer = offer_count
@@ -91,18 +81,8 @@
     [
     {%- for position in (1..offer_count) -%}
       {%- liquid
-        if is_variant_mode
-          assign offer_variant = product_resource.variants[forloop.index0]
-          assign offer_quantity = 1
-          assign units = offer_variant.option1 | split: ' ' | first | split: '-' | first | times: 1 | round
-          if units < 1
-            assign units = forloop.index
-          endif
-        else
-          assign offer_variant = product_resource.selected_or_first_available_variant
-          assign offer_quantity = forloop.index
-          assign units = forloop.index
-        endif
+        assign offer_quantity = forloop.index
+        assign units = forloop.index
 
         assign total_days = units | times: days_per_unit
 
@@ -124,10 +104,6 @@
           assign reference_price = one_time_compare
         endif
 
-        # The first available offer is used when the configured default is sold out.
-        if offer_variant.available and fallback_offer == 0
-          assign fallback_offer = forloop.index
-        endif
       -%}
       {
       "id": {{ forloop.index }},
@@ -254,27 +230,8 @@
     endfor
     assign card_order = card_order | split: ','
 
-    assign default_variant = product_resource.selected_or_first_available_variant
-    if is_variant_mode
-      assign default_index = default_offer | minus: 1
-      assign default_variant = product_resource.variants[default_index]
-    endif
-
-    unless default_variant.available
-      assign default_offer = fallback_offer
-      if default_offer < 1
-        assign default_offer = 1
-      endif
-      if is_variant_mode
-        assign default_index = default_offer | minus: 1
-        assign default_variant = product_resource.variants[default_index]
-      endif
-    endunless
-
-    assign default_quantity = 1
-    unless is_variant_mode
-      assign default_quantity = default_offer
-    endunless
+    assign default_variant = offer_variant
+    assign default_quantity = default_offer
 
     assign can_add_to_cart = default_variant.available
     assign add_to_cart_text = section_settings.cta_label
@@ -430,27 +387,12 @@
           {%- for card_position in card_order -%}
             {%- liquid
               assign offer_index = card_position | times: 1
-              assign variant_index = offer_index | minus: 1
-              assign card_has_count = true
-
-              if is_variant_mode
-                assign card_variant = product_resource.variants[variant_index]
-                assign card_label = card_variant.option1 | default: card_variant.title
-                assign card_units = card_variant.option1 | split: ' ' | first | split: '-' | first | times: 1 | round
-                # An option value with no leading number ("Trial size") has no count to show,
-                # so the card falls back to the option value itself.
-                if card_units < 1
-                  assign card_units = offer_index
-                  assign card_has_count = false
-                endif
+              assign card_variant = offer_variant
+              assign card_units = offer_index
+              if card_units == 1
+                assign card_label = card_units | append: ' ' | append: section_settings.unit_label_singular
               else
-                assign card_variant = product_resource.selected_or_first_available_variant
-                assign card_units = offer_index
-                if card_units == 1
-                  assign card_label = card_units | append: ' ' | append: section_settings.unit_label_singular
-                else
-                  assign card_label = card_units | append: ' ' | append: section_settings.unit_label_plural
-                endif
+                assign card_label = card_units | append: ' ' | append: section_settings.unit_label_plural
               endif
 
               assign card_unit_label = section_settings.unit_label_plural
@@ -496,12 +438,8 @@
                       class: 'purchase-offers__card-image'
                   }}
                 {%- endif -%}
-                {%- if card_has_count -%}
-                  <span class="purchase-offers__card-count">{{ card_units }}</span>
-                  <span class="purchase-offers__card-unit">{{ card_unit_label }}</span>
-                {%- else -%}
-                  <span class="purchase-offers__card-unit">{{ card_label }}</span>
-                {%- endif -%}
+                <span class="purchase-offers__card-count">{{ card_units }}</span>
+                <span class="purchase-offers__card-unit">{{ card_unit_label }}</span>
                 {%- if section_settings.show_card_savings -%}
                   <span
                     class="purchase-offers__card-savings"
@@ -1581,7 +1519,7 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Offers are built from the current product. A product with multiple variants shows one offer per variant; a single-variant product shows quantity tiers. Subscription pricing comes from the product's first selling plan group."
+      "content": "Offers are quantity tiers of the product's selected variant. Subscription pricing comes from the product's first selling plan group."
     },
     {
       "type": "header",
