@@ -20,6 +20,8 @@
     "slider_label": "Carrousel"
   },
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "play_model": "Jouer le modèle 3D",
     "play_video": "Lire la vidéo",
     "unit_price": "Prix unitaire",

@@ -1,0 +1,485 @@
+{%- doc -%}
+  The free gift ladder for the purchase section: one card per gift, unlocking cumulatively
+  as the order total passes each threshold, under a heading naming what the current
+  selection has earned.
+
+  Gifts are metaobject entries rather than block settings, so one edit in Custom data
+  reaches every product showing this block. The settings here are only the wording wrapped
+  around them.
+
+  Rendered inside `<purchase-offers-component>`, which addresses the cards through the
+  `ref`s below. The state rendered here matches the default selection; the component takes
+  over from the first interaction.
+
+  @param {number} total_cents - Order total of the default selection, in minor units.
+  @param {boolean} is_subscription - Whether the default selection is a subscription.
+  @param {boolean} has_subscription - Whether the product offers a subscription at all.
+{%- enddoc -%}
+
+{%- liquid
+  assign block_settings = block.settings
+
+  # Free gifts come from a metaobject definition. `shop.metaobjects` only exposes
+  # definitions whose Storefronts access is enabled, and only published entries, so this
+  # is nil rather than an error when either is missing.
+  #
+  # They unlock cumulatively as the order total passes each threshold, so they are
+  # ordered by threshold ascending. Liquid cannot sort drops by a nested field, so
+  # thresholds are zero-padded into sortable strings paired with their index.
+  assign gift_type = block_settings.gift_metaobject_type | default: 'gift_with_purchase'
+  assign gift_definition = shop.metaobjects[gift_type]
+  assign gifts = gift_definition.values
+  assign gift_order = ''
+  for gift in gifts
+    assign sort_threshold = gift.threshold.value | default: gift.threshold | times: 1
+    assign padded = sort_threshold | prepend: '0000000000' | slice: -10, 10
+    assign gift_order = gift_order | append: padded | append: '-' | append: forloop.index0 | append: ','
+  endfor
+  assign gift_order = gift_order | split: ',' | sort
+-%}
+
+{%- if gifts.size > 0 -%}
+  {%- liquid
+    assign gift_count = gifts.size
+
+    # How many the default selection actually unlocks, so the first paint states a
+    # real number rather than a placeholder the component corrects a moment later.
+    assign default_unlocked = 0
+    assign default_shipping = false
+    assign potential_gifts = 0
+    assign potential_shipping = false
+    for gift in gifts
+      assign check_shipping_raw = gift.free_shipping.value
+      if check_shipping_raw == blank
+        assign check_shipping_raw = gift.free_shipping
+      endif
+      assign check_is_shipping = false
+      if check_shipping_raw == true
+        assign check_is_shipping = true
+      endif
+
+      assign check_threshold = gift.threshold.value | default: gift.threshold | times: 1
+      assign check_sub_only_raw = gift.subscription_only.value
+      if check_sub_only_raw == blank
+        assign check_sub_only_raw = gift.subscription_only
+      endif
+      assign check_sub_only = false
+      if check_sub_only_raw == true
+        assign check_sub_only = true
+      endif
+
+      assign check_unlocked = false
+      if total_cents >= check_threshold
+        if check_sub_only == false or is_subscription
+          assign check_unlocked = true
+        endif
+      endif
+
+      if check_unlocked
+        if check_is_shipping
+          assign default_shipping = true
+        else
+          assign default_unlocked = default_unlocked | plus: 1
+        endif
+      endif
+
+      # What subscribing would add: only meaningful while on a one-time purchase,
+      # and only for a product that actually offers a subscription.
+      if has_subscription and is_subscription == false and check_sub_only and check_unlocked == false
+        if check_is_shipping
+          assign potential_shipping = true
+        else
+          assign potential_gifts = potential_gifts | plus: 1
+        endif
+      endif
+    endfor
+
+    assign gift_word = block_settings.gift_word_plural
+    if default_unlocked == 1
+      assign gift_word = block_settings.gift_word_singular
+    endif
+
+    # Free shipping is named rather than counted, so it reads as
+    # "free shipping and 2 free gifts" instead of "3 free gifts".
+    assign reward_parts = ''
+    if default_shipping
+      assign reward_parts = block_settings.shipping_reward_label
+    endif
+    if default_unlocked > 0
+      assign gift_phrase = default_unlocked | append: ' ' | append: gift_word
+      if reward_parts == blank
+        assign reward_parts = gift_phrase
+      else
+        assign reward_parts = reward_parts | append: ' ' | append: block_settings.rewards_join_word | append: ' ' | append: gift_phrase
+      endif
+    endif
+
+    assign potential_word = block_settings.gift_word_plural
+    if potential_gifts == 1
+      assign potential_word = block_settings.gift_word_singular
+    endif
+
+    assign potential_parts = ''
+    if potential_shipping
+      assign potential_parts = block_settings.shipping_reward_label
+    endif
+    if potential_gifts > 0
+      assign potential_phrase = block_settings.gifts_up_to_word | append: ' ' | append: potential_gifts | append: ' ' | append: potential_word
+      assign potential_phrase = potential_phrase | strip
+      if potential_parts == blank
+        assign potential_parts = potential_phrase
+      else
+        assign potential_parts = potential_parts | append: ' ' | append: block_settings.rewards_join_word | append: ' ' | append: potential_phrase
+      endif
+    endif
+
+    # `[count]` is fixed, so it is resolved here; `[unlocked]` and `[gifts]` change
+    # with the selection and stay as tokens for the component to fill in.
+    assign note_subscription = block_settings.gifts_note_subscription | replace: '[count]', gift_count
+    assign note_one_time = block_settings.gifts_note_one_time | replace: '[count]', gift_count
+    assign note_none = block_settings.gifts_note_none | replace: '[count]', gift_count
+    assign note_no_subscription = block_settings.gifts_note_no_subscription | replace: '[count]', gift_count
+
+    unless has_subscription
+      assign note_subscription = note_no_subscription
+      assign note_one_time = note_no_subscription
+    endunless
+
+    if is_subscription == false
+      # The subscribe upsell only earns its place when subscribing would actually
+      # add something; otherwise say what this purchase already includes.
+      if potential_parts != blank
+        assign note_template = note_one_time
+      else
+        assign note_template = note_no_subscription
+      endif
+    else
+      assign note_template = note_subscription
+    endif
+
+    # Only a template that quotes the unlocked count needs the empty-state wording;
+    # this leaves an "up to [count]" upsell alone when nothing is unlocked yet.
+    assign note_quotes_count = false
+    if note_template contains '[unlocked]' or note_template contains '[rewards]'
+      assign note_quotes_count = true
+    endif
+    if reward_parts == blank and note_none != blank and note_quotes_count
+      assign note_template = note_none
+    endif
+
+    assign note_initial = note_template | replace: '[potential]', potential_parts
+    assign note_initial = note_initial | replace: '[rewards]', reward_parts
+    assign note_initial = note_initial | replace: '[unlocked]', default_unlocked
+    assign note_initial = note_initial | replace: '[gifts]', gift_word
+  -%}
+  <div class="purchase-offers__gifts">
+    {%- if note_initial != blank -%}
+      <p
+        class="purchase-offers__note"
+        ref="giftsNote"
+        data-subscription-note="{{ note_subscription | escape }}"
+        data-one-time-note="{{ note_one_time | escape }}"
+        data-none-note="{{ note_none | escape }}"
+        data-purchase-note="{{ note_no_subscription | escape }}"
+        data-has-subscription="{{ has_subscription }}"
+        data-up-to-word="{{ block_settings.gifts_up_to_word | escape }}"
+        data-gift-singular="{{ block_settings.gift_word_singular | escape }}"
+        data-gift-plural="{{ block_settings.gift_word_plural | escape }}"
+        data-shipping-label="{{ block_settings.shipping_reward_label | escape }}"
+        data-join-word="{{ block_settings.rewards_join_word | escape }}"
+      >
+        {{ note_initial }}
+      </p>
+    {%- endif -%}
+
+    <ul
+      class="purchase-offers__gift-list"
+      role="list"
+    >
+      {%- for entry in gift_order -%}
+        {%- liquid
+          assign gift_index = entry | split: '-' | last | times: 1
+
+          # The metaobject values collection supports iteration but not index
+          # access, so the entry is selected by walking rather than `gifts[i]`.
+          assign gift = nil
+          for candidate in gifts
+            if forloop.index0 == gift_index
+              assign gift = candidate
+              break
+            endif
+          endfor
+
+          # Metaobject fields are metafield drops, so `.value` is the documented
+          # accessor. Falling back to the field itself costs nothing and keeps the
+          # card populated if a field is exposed directly instead.
+          assign gift_title = gift.title.value | default: gift.title
+          assign gift_subtitle = gift.subtitle.value | default: gift.subtitle
+          assign gift_image = gift.image.value | default: gift.image
+          assign gift_threshold = gift.threshold.value | default: gift.threshold | times: 1
+
+          # `blank` also matches false, but both branches yield false there, so the
+          # fallback cannot flip a genuinely false flag to true.
+          assign gift_sub_only_raw = gift.subscription_only.value
+          if gift_sub_only_raw == blank
+            assign gift_sub_only_raw = gift.subscription_only
+          endif
+          assign gift_subscription_only = false
+          if gift_sub_only_raw == true
+            assign gift_subscription_only = true
+          endif
+
+          assign gift_shipping_raw = gift.free_shipping.value
+          if gift_shipping_raw == blank
+            assign gift_shipping_raw = gift.free_shipping
+          endif
+          assign gift_is_shipping = false
+          if gift_shipping_raw == true
+            assign gift_is_shipping = true
+          endif
+
+          # Server-rendered state matches the default selection so the panel is
+          # correct before the component hydrates.
+          assign gift_unlocked = false
+          if total_cents >= gift_threshold
+            assign gift_unlocked = true
+          endif
+          if gift_subscription_only and is_subscription == false
+            assign gift_unlocked = false
+          endif
+        -%}
+        {%- if gift == blank -%}
+          {%- continue -%}
+        {%- endif -%}
+        <li
+          class="purchase-offers__gift"
+          ref="gifts[]"
+          data-threshold="{{ gift_threshold }}"
+          data-subscription-only="{{ gift_subscription_only }}"
+          data-shipping="{{ gift_is_shipping }}"
+          data-unlocked="{{ gift_unlocked }}"
+        >
+          <span class="offer-section__media purchase-offers__gift-media">
+            {%- if gift_image -%}
+              {{
+                gift_image
+                | image_url: width: 400
+                | image_tag:
+                  loading: 'lazy',
+                  widths: '120, 200, 400',
+                  sizes: '(min-width: 750px) 160px, 30vw',
+                  alt: '',
+                  class: 'offer-section__media-image'
+              }}
+            {%- endif -%}
+          </span>
+          {%- if gift_title != blank -%}
+            <span class="purchase-offers__gift-title">{{ gift_title }}</span>
+          {%- endif -%}
+          {%- if gift_subtitle != blank -%}
+            <span class="purchase-offers__gift-subtitle">{{ gift_subtitle }}</span>
+          {%- endif -%}
+          <span
+            class="visually-hidden"
+            ref="giftStatuses[]"
+          >
+            {%- if gift_unlocked -%}
+              {{ 'accessibility.gift_unlocked' | t }}
+            {%- else -%}
+              {{ 'accessibility.gift_locked' | t }}
+            {%- endif -%}
+          </span>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- elsif request.design_mode -%}
+  <p class="purchase-offers__gifts-empty">
+    {%- if gift_definition == blank -%}
+      No metaobject definition named
+      <strong>{{ gift_type }}</strong>
+      is visible to this theme. Check the type handle above, and make sure the definition has
+      Storefronts access enabled in Settings &rarr; Custom data.
+    {%- else -%}
+      The
+      <strong>{{ gift_type }}</strong>
+      definition was found but has no published entries. Draft entries are not shown.
+    {%- endif -%}
+  </p>
+{%- endif -%}
+
+{% stylesheet %}
+  .purchase-offers__gifts-empty {
+    margin: 0;
+    padding: var(--padding-md);
+    border: var(--style-border-width) dashed var(--offer-section-border);
+    border-radius: var(--offer-section-radius);
+    color: var(--offer-section-muted);
+    font-size: var(--font-size--xs);
+    text-align: center;
+  }
+
+  .purchase-offers__gifts {
+    /* Gift thumbnails fill their grid track rather than taking a fixed size. */
+    --offer-section-media-size: 100%;
+
+    display: grid;
+    gap: var(--gap-md);
+    padding: var(--padding-lg);
+    border-radius: var(--offer-section-radius);
+    background-color: rgb(var(--offer-section-accent-rgb) / var(--opacity-10));
+  }
+
+  .purchase-offers__gift-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: var(--gap-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /*
+   * `align-content: start` packs each gift's rows to the top of its stretched grid area,
+   * so every image sits on the same line and a longer title or subtitle simply extends
+   * downwards instead of pushing the row out of alignment.
+   */
+  .purchase-offers__gift {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: var(--gap-3xs);
+    align-content: start;
+    justify-items: center;
+    text-align: center;
+  }
+
+  /* Locked gifts stay legible but visibly out of reach. */
+  .purchase-offers__gift[data-unlocked='false'] {
+    opacity: var(--opacity-50);
+    filter: grayscale(1);
+  }
+
+  .purchase-offers__gift {
+    transition: opacity var(--offer-section-motion-slow) var(--animation-easing),
+      filter var(--offer-section-motion-slow) var(--animation-easing);
+  }
+
+  .purchase-offers__gift-media {
+    margin-block-end: var(--margin-2xs);
+  }
+
+  .purchase-offers__gift-title {
+    font-size: var(--font-size--xs);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .purchase-offers__gift-subtitle {
+    color: var(--offer-section-muted);
+    font-size: var(--font-size--2xs);
+    line-height: 1.3;
+  }
+
+  /*
+   * The wording changes with the selection, so the note reserves a fixed two lines and
+   * centres within them. Without this the panel jumps height whenever the heading moves
+   * between one and two lines. `balance` keeps those two lines close to even.
+   */
+  .purchase-offers__note {
+    --purchase-offers-note-line-height: 1.35;
+    --purchase-offers-note-lines: 2;
+
+    display: grid;
+    align-content: center;
+    margin: 0;
+    min-block-size: calc(var(--purchase-offers-note-line-height) * var(--purchase-offers-note-lines) * 1em);
+    color: var(--offer-section-accent);
+    font-size: var(--font-size--sm);
+    font-weight: 600;
+    line-height: var(--purchase-offers-note-line-height);
+    text-align: center;
+    text-wrap: balance;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Free gifts",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Gifts are read from the gift_with_purchase metaobject entries (title, subtitle, image, threshold, subscription_only, free_shipping) and unlock cumulatively as the order total passes each threshold."
+    },
+    {
+      "type": "text",
+      "id": "gift_metaobject_type",
+      "label": "Metaobject type",
+      "default": "gift_with_purchase",
+      "info": "The definition's type handle. It must have Storefronts access enabled and published entries."
+    },
+    {
+      "type": "paragraph",
+      "content": "Headings accept [rewards] for what the selection already earns (e.g. \"free shipping and 2 free gifts\"), [potential] for what subscribing would add (e.g. \"free shipping and up to 2 free gifts\"), [unlocked] for the gift count on its own, [gifts] for the gift wording, and [count] for the total number of gifts."
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_subscription",
+      "label": "Heading with a subscription",
+      "default": "Your subscription includes [rewards] today!"
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_one_time",
+      "label": "Heading with a one-time purchase",
+      "default": "Subscribe to get [potential]",
+      "info": "Shown only when subscribing would add something. Otherwise the purchase heading is used."
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_no_subscription",
+      "label": "Heading when the product has no subscription",
+      "default": "Your purchase includes [rewards] today!"
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_none",
+      "label": "Heading when nothing is unlocked yet",
+      "default": "Add more to unlock your free gifts",
+      "info": "Replaces headings that quote [unlocked], so they never read \"0 free gifts\"."
+    },
+    {
+      "type": "text",
+      "id": "gift_word_singular",
+      "label": "Gift wording (one)",
+      "default": "free gift"
+    },
+    {
+      "type": "text",
+      "id": "gift_word_plural",
+      "label": "Gift wording (many)",
+      "default": "free gifts"
+    },
+    {
+      "type": "text",
+      "id": "shipping_reward_label",
+      "label": "Free shipping wording",
+      "default": "free shipping",
+      "info": "A gift with free_shipping checked is named in the heading with this wording instead of being counted."
+    },
+    {
+      "type": "text",
+      "id": "rewards_join_word",
+      "label": "Rewards joining word",
+      "default": "and"
+    },
+    {
+      "type": "text",
+      "id": "gifts_up_to_word",
+      "label": "\"Up to\" wording",
+      "default": "up to",
+      "info": "Prefixes the gift count in [potential], since thresholds may not be met yet."
+    }
+  ]
+}
+{% endschema %}

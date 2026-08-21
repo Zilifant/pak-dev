@@ -1,5 +1,7 @@
 {
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "account": "חשבון",
     "active_filters": "מסננים פעילים:",
     "cart": "סל",

@@ -1,5 +1,7 @@
 {
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "account": "اکاؤنٹ",
     "active_filters": "فعال فلٹر:",
     "cart": "کارٹ",

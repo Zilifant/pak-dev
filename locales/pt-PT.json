@@ -20,6 +20,8 @@
     "slider_label": "Slider"
   },
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "play_model": "Reproduzir modelo 3D",
     "play_video": "Reproduzir o vídeo",
     "unit_price": "Preço unitário",

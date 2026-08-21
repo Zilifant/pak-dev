@@ -20,6 +20,8 @@
     "slider_label": "Cursore"
   },
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "play_model": "Riproduci modello 3D",
     "play_video": "Riproduci video",
     "unit_price": "Prezzo unitario",

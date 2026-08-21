@@ -20,6 +20,8 @@
     "slider_label": "Плъзгач"
   },
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "play_model": "Възпроизвеждане на 3D модел",
     "play_video": "Възпроизвеждане на видеоклип",
     "unit_price": "Единична цена",

@@ -13,6 +13,11 @@ Current members: `sections/purchase-offers.liquid`, `sections/ingredient-list.li
 Each links the library with `{{ 'offer-sections.css' | asset_url | stylesheet_tag }}` and
 carries `offer-section` alongside its own component class on the section root.
 
+A block rendered inside a member section is covered by that section's link and inherits
+its tokens, so it consumes `--offer-section-*` and `.offer-section__*` in its own
+`{% stylesheet %}` without linking the library again — `blocks/_purchase-offers-gifts.liquid`
+is the current example. Adding a `stylesheet_tag` there would duplicate the library.
+
 Check the first half of the rule with:
 
 ```sh

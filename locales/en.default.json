@@ -29,6 +29,8 @@
       "one": "{{ count }} filter applied",
       "other": "{{ count }} filters applied"
     },
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "home_logo_alt": "{{ store_name }} - Home",
     "increase_quantity": "Increase quantity",
     "inventory_status": "Inventory status",

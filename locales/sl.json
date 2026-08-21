@@ -20,6 +20,8 @@
     "slider_label": "Drsnik"
   },
   "accessibility": {
+    "gift_locked": "Not yet unlocked",
+    "gift_unlocked": "Included with your order",
     "play_model": "Predvajaj 3D-model",
     "play_video": "Predvajaj videoposnetek",
     "unit_price": "Cena na enoto",
