@@ -140,7 +140,7 @@
         {%- liquid
           assign allocation = null
           for candidate in offer_variant.selling_plan_allocations
-            if candidate.selling_plan_id == plan.id
+            if candidate.selling_plan.id == plan.id
               assign allocation = candidate
               break
             endif
@@ -289,7 +289,7 @@
     assign default_total_cents = default_variant.price | times: default_quantity
     unless default_plan_key == 'onetime'
       for allocation in default_variant.selling_plan_allocations
-        if allocation.selling_plan_id == default_plan_key
+        if allocation.selling_plan.id == default_plan_key
           assign default_total_cents = allocation.price | times: default_quantity
           break
         endif
@@ -549,11 +549,14 @@
 
       <div class="purchase-offers__summary">
         <div class="purchase-offers__summary-detail">
+          {%- comment -%}
+            Always rendered, never hidden: the component empties it when there is nothing
+            to save, so its line stays reserved and the summary keeps a constant height.
+          {%- endcomment -%}
           <p
             class="purchase-offers__savings"
             ref="summarySavings"
             data-template="{{ section_settings.savings_label | escape }}"
-            hidden
           ></p>
           <p class="purchase-offers__per-unit">
             <span
@@ -1313,10 +1316,18 @@
 
   /* Price summary */
   .purchase-offers__summary {
+    /*
+     * A floor tall enough to hold the panel's tallest state, so the savings line
+     * appearing and the compare-at price widening the right column cannot change
+     * the panel's height. Raise this if a longer label still makes it grow.
+     */
+    --purchase-offers-summary-min-height: 105px;
+
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    align-items: center;
     gap: var(--gap-md);
+    min-block-size: var(--purchase-offers-summary-min-height);
     padding: var(--padding-lg);
     border-radius: var(--offer-section-radius);
     background-color: var(--offer-section-surface);
@@ -1336,6 +1347,23 @@
   .purchase-offers__total-label {
     color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
+  }
+
+  /*
+   * The savings line comes and goes with the selection — a subscription or a bundle
+   * has one, a single one-time tub does not. It is emptied rather than hidden, and
+   * reserves its line either way, so the panel does not jump as the discount appears.
+   * `[hidden]` is not an option here: the library hides it with
+   * `display: none !important`, which collapses the row.
+   *
+   * The line height is stated rather than inherited so the reserved box can be
+   * expressed in `em`, matching the empty element to one line of its own text.
+   */
+  .purchase-offers__savings {
+    --purchase-offers-savings-line-height: 1.35;
+
+    line-height: var(--purchase-offers-savings-line-height);
+    min-block-size: calc(var(--purchase-offers-savings-line-height) * 1em);
   }
 
   .purchase-offers__per-unit {

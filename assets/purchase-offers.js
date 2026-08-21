@@ -105,18 +105,26 @@ class PurchaseOffersComponent extends Component {
   }
 
   /**
-   * Renders a `[savings]` template, hiding the element when there is nothing to save.
+   * Renders a `[savings]` template, taking the element out of view when there is
+   * nothing to save.
    *
    * @param {HTMLElement | undefined} element
    * @param {number} save
+   * @param {boolean} [reserveSpace] - Empty the element rather than hiding it, so its
+   *   line stays reserved and the surrounding layout keeps a constant height.
    */
-  #setSavings(element, save) {
+  #setSavings(element, save, reserveSpace = false) {
     if (!element) return;
 
-    element.hidden = !save;
-    if (!save) return;
+    const text = save ? (element.dataset.template ?? '[savings]').replace('[savings]', String(save)) : '';
 
-    element.textContent = (element.dataset.template ?? '[savings]').replace('[savings]', String(save));
+    if (reserveSpace) {
+      element.textContent = text;
+      return;
+    }
+
+    element.hidden = !save;
+    if (save) element.textContent = text;
   }
 
   /** Syncs the cart inputs, the summary and every card with the current selection. */
@@ -150,7 +158,7 @@ class PurchaseOffersComponent extends Component {
       this.#setMoney(this.refs.summaryPerUnit, pricing.perUnit);
       this.#setMoney(this.refs.summaryPerDay, pricing.perDay);
       this.#setMoney(this.refs.summaryCompareAt, pricing.compareAt);
-      this.#setSavings(this.refs.summarySavings, pricing.save);
+      this.#setSavings(this.refs.summarySavings, pricing.save, true);
     }
 
     this.#updateGifts(pricing?.cents ?? 0, isSubscription);
