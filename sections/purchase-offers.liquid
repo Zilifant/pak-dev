@@ -685,9 +685,9 @@
             >
           {%- endif -%}
 
-          <div class="product-form-buttons purchase-offers__buttons">
+          <div class="purchase-offers__buttons">
             <span
-              class="product-form-text__error hidden"
+              class="purchase-offers__error hidden"
               ref="addToCartTextError"
             >
               <span class="svg-wrapper">{{- 'icon-error.svg' | inline_asset_content -}}</span>
@@ -1182,6 +1182,20 @@
   /* Add to cart */
   .purchase-offers__buttons {
     display: grid;
+  }
+
+  /*
+   * `product-form.js` reveals this on a failed add to cart. It carried the theme's
+   * `product-form-text__error` class, but that class is styled by
+   * snippets/buy-buttons-styles.liquid, which nothing on a purchase-offers page renders —
+   * so the error laid itself out unstyled. Those declarations live here instead, minus
+   * the snippet's `flex: 1 0 100%`, which only means anything inside its flex row.
+   */
+  .purchase-offers__error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap-xs);
+    margin-block-end: var(--gap-xs);
   }
 
   .purchase-offers__guarantee {
