@@ -1184,6 +1184,21 @@
   }
 
   /*
+   * Matches the ingredient list's button: the theme's `.button` supplies everything but
+   * the colours, which stay wired to this section's settings. The hover pair re-asserts
+   * them against `.button:hover`, so the fill holds and the opacity carries the feedback.
+   */
+  .purchase-offers__cta,
+  .purchase-offers__cta:hover {
+    --button-background-color: var(--offer-section-ink);
+    --button-color: var(--offer-section-on-ink);
+  }
+
+  .purchase-offers__cta:hover {
+    opacity: var(--opacity-90);
+  }
+
+  /*
    * `product-form.js` reveals this on a failed add to cart. It carried the theme's
    * `product-form-text__error` class, but that class is styled by
    * snippets/buy-buttons-styles.liquid, which nothing on a purchase-offers page renders —
