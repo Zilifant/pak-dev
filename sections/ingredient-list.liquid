@@ -3,7 +3,7 @@
   with image, title, subtitle and description fields, or its own fallback settings.
 {%- endcomment -%}
 
-{{ 'offer-sections.css' | asset_url | stylesheet_tag }}
+{{ 'offer-sections.css' | asset_url | stylesheet_tag: preload: true }}
 
 {%- liquid
   assign section_settings = section.settings

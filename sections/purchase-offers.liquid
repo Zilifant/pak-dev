@@ -10,7 +10,7 @@
   handed to `purchase-offers.js` as JSON, so the client never does currency math.
 {%- endcomment -%}
 
-{{ 'offer-sections.css' | asset_url | stylesheet_tag }}
+{{ 'offer-sections.css' | asset_url | stylesheet_tag: preload: true }}
 
 {%- liquid
   assign section_settings = section.settings
@@ -320,15 +320,6 @@
     type="module"
   ></script>
 
-  {%- comment -%}
-    The nutrition label uses the theme's dialog component. `scripts.liquid` loads it at
-    low priority, so it is requested here too — the module is deduped by URL.
-  {%- endcomment -%}
-  <script
-    src="{{ 'dialog.js' | asset_url }}"
-    type="module"
-  ></script>
-
   {% render 'add-to-cart-button-styles' %}
   {% render 'fly-to-cart-styles' %}
   {% render 'dialog-styles' %}
@@ -496,11 +487,11 @@
                 {%- if section_settings.show_card_images and card_image -%}
                   {{
                     card_image
-                    | image_url: width: 320
+                    | image_url: width: 192
                     | image_tag:
                       loading: 'lazy',
-                      widths: '120, 200, 320',
-                      sizes: '(min-width: 750px) 160px, 40vw',
+                      widths: '64, 128, 192',
+                      sizes: '64px',
                       alt: '',
                       class: 'purchase-offers__card-image'
                   }}
