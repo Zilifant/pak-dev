@@ -40,7 +40,7 @@
         "nutrition_content": "",
         "cta_label": "Start Risk-Free",
         "guarantee_text": "90-Day Money-Back Guarantee",
-        "supporting_text": "<p>Free shipping on every order. Cancel or change your subscription anytime.</p>",
+        "supporting_text": "<p>Cancel or change your subscription anytime.</p>",
         "background_color": "",
         "surface_color": "#fdf1de",
         "ink_color": "#2a1f17",
@@ -57,7 +57,6 @@
         "gifts_note_none": "Add more to unlock your free gifts",
         "gift_word_singular": "free gift",
         "gift_word_plural": "free gifts",
-        "shipping_gift_title": "Free Shipping",
         "shipping_reward_label": "free shipping",
         "rewards_join_word": "and",
         "gifts_up_to_word": "up to"

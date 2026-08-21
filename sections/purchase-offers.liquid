@@ -363,7 +363,9 @@
     <div class="offer-section__inner purchase-offers__inner">
       <header class="offer-section__header purchase-offers__header">
         {%- if section_settings.subheading != blank -%}
-          <p class="offer-section__header-copy offer-section__title purchase-offers__subheading">{{ section_settings.subheading }}</p>
+          <h2 class="offer-section__header-copy offer-section__title purchase-offers__subheading">
+            {{- section_settings.subheading -}}
+          </h2>
         {%- endif -%}
       </header>
 
@@ -577,16 +579,17 @@
 
           # How many the default selection actually unlocks, so the first paint states a
           # real number rather than a placeholder the component corrects a moment later.
-          assign shipping_match = section_settings.shipping_gift_title | downcase | strip
-
           assign default_unlocked = 0
           assign default_shipping = false
           assign potential_gifts = 0
           assign potential_shipping = false
           for gift in gifts
-            assign check_title = gift.title.value | default: gift.title | downcase | strip
+            assign check_shipping_raw = gift.free_shipping.value
+            if check_shipping_raw == blank
+              assign check_shipping_raw = gift.free_shipping
+            endif
             assign check_is_shipping = false
-            if shipping_match != blank and check_title == shipping_match
+            if check_shipping_raw == true
               assign check_is_shipping = true
             endif
 
@@ -761,9 +764,12 @@
                   assign gift_subscription_only = true
                 endif
 
+                assign gift_shipping_raw = gift.free_shipping.value
+                if gift_shipping_raw == blank
+                  assign gift_shipping_raw = gift.free_shipping
+                endif
                 assign gift_is_shipping = false
-                assign gift_title_match = gift_title | downcase | strip
-                if shipping_match != blank and gift_title_match == shipping_match
+                if gift_shipping_raw == true
                   assign gift_is_shipping = true
                 endif
 
@@ -1059,8 +1065,17 @@
     text-align: center;
   }
 
+  /*
+   * A real <h2>, which brings base.css's element rule with it: that would hand the
+   * heading the theme's heading colour and letter case, overriding the section's ink
+   * token and its settled look. A class outranks the element selector and puts both
+   * back; the heading's line height is left to apply, since this is now a heading.
+   */
   .purchase-offers__subheading {
     --offer-section-title-size: var(--font-size--xl);
+
+    color: inherit;
+    text-transform: none;
   }
 
   /* Subscribe & save / one-time segmented control */
@@ -1747,7 +1762,7 @@
     },
     {
       "type": "paragraph",
-      "content": "Gifts are read from the gift_with_purchase metaobject entries (title, subtitle, image, threshold, subscription_only) and unlock cumulatively as the order total passes each threshold."
+      "content": "Gifts are read from the gift_with_purchase metaobject entries (title, subtitle, image, threshold, subscription_only, free_shipping) and unlock cumulatively as the order total passes each threshold."
     },
     {
       "type": "text",
@@ -1800,16 +1815,10 @@
     },
     {
       "type": "text",
-      "id": "shipping_gift_title",
-      "label": "Free shipping gift title",
-      "default": "Free Shipping",
-      "info": "A gift whose title matches this is named in the heading instead of counted. Case insensitive. Leave blank to count every gift."
-    },
-    {
-      "type": "text",
       "id": "shipping_reward_label",
       "label": "Free shipping wording",
-      "default": "free shipping"
+      "default": "free shipping",
+      "info": "A gift with free_shipping checked is named in the heading with this wording instead of being counted."
     },
     {
       "type": "text",
