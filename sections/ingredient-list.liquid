@@ -111,14 +111,13 @@
       </div>
     {%- endif -%}
 
-    {%- if section_settings.button_text != blank and section_settings.button_url != blank -%}
-      <a
-        class="button offer-section__cta ingredient-list__button"
-        href="{{ section_settings.button_url }}"
-      >
-        {{ section_settings.button_text | escape }}
-      </a>
-    {%- endif -%}
+    {% render 'action-button',
+      text: section_settings.button_text,
+      action: section_settings.button_action,
+      url: section_settings.button_url,
+      scroll_target: section_settings.button_scroll_target,
+      class: 'offer-section__cta ingredient-list__button'
+    %}
   </div>
 </div>
 
@@ -346,10 +345,32 @@
       "default": "Start Protecting My Dog's Spine"
     },
     {
+      "type": "select",
+      "id": "button_action",
+      "label": "Button action",
+      "options": [
+        { "value": "scroll", "label": "Scroll to section" },
+        { "value": "link", "label": "Link" }
+      ],
+      "default": "scroll"
+    },
+    {
       "type": "url",
       "id": "button_url",
-      "label": "Button URL",
-      "default": "/collections/all"
+      "label": "Link",
+      "default": "/collections/all",
+      "visible_if": "{{ section.settings.button_action == 'link' }}"
+    },
+    {
+      "type": "select",
+      "id": "button_scroll_target",
+      "label": "Scroll target",
+      "options": [
+        { "value": "purchase-offers", "label": "Purchase offers" }
+      ],
+      "default": "purchase-offers",
+      "info": "The section on this page the button scrolls to.",
+      "visible_if": "{{ section.settings.button_action == 'scroll' }}"
     },
     {
       "type": "header",

@@ -95,6 +95,8 @@
         "heading_preset": "h3",
         "subtitle": "Tap any mushroom to learn how it helps.",
         "button_text": "Start Protecting My Dog's Spine",
+        "button_action": "scroll",
+        "button_scroll_target": "purchase-offers",
         "button_url": "shopify://collections/all",
         "background_color": "#fff1d2",
         "card_color": "#fffaf0",

@@ -1,0 +1,77 @@
+{%- doc -%}
+  A section's call to action, rendered as the element its behaviour calls for: an `<a>`
+  when it navigates, a `<button>` when it only moves the page.
+
+  Unlike `snippets/button.liquid`, which reads a block's own style settings, this takes
+  its classes from the caller, so a section can dress it in the theme's `.button` plus
+  whatever component classes it already uses for its own call to action.
+
+  A section supplies `scroll_target` from its own settings — a select of destinations
+  named for merchants, rather than an id typed by hand.
+
+  @param {string} text - The button label.
+  @param {string} [action] - 'link' (default) to navigate, or 'scroll' to move down the page.
+  @param {string} [url] - Where to navigate, when the action is 'link'.
+  @param {string} [scroll_target] - id of the element to scroll to, when the action is 'scroll'.
+  @param {string} [class] - Classes to add alongside the theme's `button` class.
+
+  @example
+  {% render 'action-button',
+    text: section.settings.button_text,
+    action: section.settings.button_action,
+    url: section.settings.button_url,
+    scroll_target: section.settings.button_scroll_target,
+    class: 'offer-section__cta ingredient-list__button'
+  %}
+{%- enddoc -%}
+
+{%- liquid
+  assign button_class = 'button'
+  if class != blank
+    assign button_class = button_class | append: ' ' | append: class
+  endif
+
+  # A scroll button with nowhere to go would be a control that does nothing, so it falls
+  # back to the link the section also carries.
+  assign button_action = action | default: 'link'
+  if button_action == 'scroll' and scroll_target == blank
+    assign button_action = 'link'
+  endif
+-%}
+
+{%- if text != blank -%}
+  {%- if button_action == 'scroll' -%}
+    <script
+      src="{{ 'scroll-to.js' | asset_url }}"
+      type="module"
+    ></script>
+
+    <scroll-to-component data-scroll-target="{{ scroll_target | escape }}">
+      <button
+        type="button"
+        class="{{ button_class }}"
+        on:click="/scrollToTarget"
+      >
+        {{- text | escape -}}
+      </button>
+    </scroll-to-component>
+  {%- elsif url != blank -%}
+    <a
+      class="{{ button_class }}"
+      href="{{ url }}"
+    >
+      {{- text | escape -}}
+    </a>
+  {%- endif -%}
+{%- endif -%}
+
+{% stylesheet %}
+  /*
+   * The custom element exists only to host the click handler. Taking it out of the
+   * layout leaves the button as the direct child of whatever laid the section out, so
+   * the snippet drops into a grid or flex container without adding a box to it.
+   */
+  scroll-to-component {
+    display: contents;
+  }
+{% endstylesheet %}

@@ -312,7 +312,13 @@
     class="section-background{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
   ></div>
 
+  {%- comment -%}
+    A stable anchor, so a call to action elsewhere on the page can scroll here by name
+    rather than by section id. Named for the section, not for `section.id`, which changes
+    whenever the section is re-added.
+  {%- endcomment -%}
   <purchase-offers-component
+    id="purchase-offers"
     class="section section--page-width offer-section purchase-offers spacing-style{% if section_settings.background_color != blank %} color-custom-{{ section.id }}{% endif %}"
     data-add-to-cart-text="{{ add_to_cart_text | escape }}"
     data-sold-out-text="{{ sold_out_text | escape }}"
