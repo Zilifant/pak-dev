@@ -96,8 +96,8 @@
         "subtitle": "Tap any mushroom to learn how it helps.",
         "button_text": "Start Protecting My Dog's Spine",
         "button_action": "scroll",
-        "button_scroll_target": "purchase-offers",
         "button_url": "shopify://collections/all",
+        "button_scroll_target": "purchase-offers",
         "background_color": "#fff1d2",
         "card_color": "#fffaf0",
         "ink_color": "#2a1f17",
@@ -109,6 +109,25 @@
     },
     "purchase_offers": {
       "type": "purchase-offers",
+      "blocks": {
+        "gifts": {
+          "type": "_purchase-offers-gifts",
+          "static": true,
+          "settings": {
+            "gift_metaobject_type": "gift_with_purchase",
+            "gifts_note_subscription": "Your subscription includes [rewards] today!",
+            "gifts_note_one_time": "Subscribe to get [potential]",
+            "gifts_note_no_subscription": "Your purchase includes [rewards] today!",
+            "gifts_note_none": "Add more to unlock your free gifts",
+            "gift_word_singular": "free gift",
+            "gift_word_plural": "free gifts",
+            "shipping_reward_label": "free shipping",
+            "rewards_join_word": "and",
+            "gifts_up_to_word": "up to"
+          },
+          "blocks": {}
+        }
+      },
       "settings": {
         "subheading": "Choose Your Offer",
         "subscribe_label": "Subscribe & Save",
@@ -145,25 +164,6 @@
         "accent_color": "#b98a4b",
         "padding-block-start": 48,
         "padding-block-end": 48
-      },
-      "blocks": {
-        "gifts": {
-          "type": "_purchase-offers-gifts",
-          "static": true,
-          "settings": {
-            "gift_metaobject_type": "gift_with_purchase",
-            "gifts_note_subscription": "Your subscription includes [rewards] today!",
-            "gifts_note_one_time": "Subscribe to get [potential]",
-            "gifts_note_no_subscription": "Your purchase includes [rewards] today!",
-            "gifts_note_none": "Add more to unlock your free gifts",
-            "gift_word_singular": "free gift",
-            "gift_word_plural": "free gifts",
-            "shipping_reward_label": "free shipping",
-            "rewards_join_word": "and",
-            "gifts_up_to_word": "up to"
-          },
-          "blocks": {}
-        }
       }
     }
   },
