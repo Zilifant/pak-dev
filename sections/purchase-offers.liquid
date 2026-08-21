@@ -75,6 +75,11 @@
     if default_offer > offer_count
       assign default_offer = offer_count
     endif
+
+    # The default selection's prices are picked up as the offers are priced below, so the
+    # summary panel paints real values on the server and the component only has to keep
+    # them in step with later interaction.
+    assign initial_found = false
   -%}
 
   {%- capture offers_json -%}
@@ -83,6 +88,11 @@
       {%- liquid
         assign offer_quantity = forloop.index
         assign units = forloop.index
+
+        assign is_default_offer = false
+        if offer_quantity == default_offer
+          assign is_default_offer = true
+        endif
 
         assign total_days = units | times: days_per_unit
 
@@ -155,6 +165,16 @@
               assign plan_per_day_money = plan_per_day | money
             endif
 
+            if is_default_offer and plan.id == default_plan_key
+              assign initial_total = plan_total_money
+              assign initial_per_unit = plan_per_unit_money
+              assign initial_per_day = plan_per_day_money
+              assign initial_compare_cents = plan_compare
+              assign initial_compare = plan_compare_money
+              assign initial_save = plan_save
+              assign initial_found = true
+            endif
+
             if plan_index > 0
               echo ','
             endif
@@ -189,6 +209,18 @@
           assign one_time_compare_money = one_time_compare | money
           assign one_time_per_unit_money = one_time_per_unit | money
           assign one_time_per_day_money = one_time_per_day | money
+        endif
+
+        # Runs after the plan loop, so it only fills in for a default subscription plan the
+        # variant has no allocation for — the same substitution the component makes.
+        if is_default_offer and initial_found == false
+          assign initial_total = one_time_total_money
+          assign initial_per_unit = one_time_per_unit_money
+          assign initial_per_day = one_time_per_day_money
+          assign initial_compare_cents = one_time_compare
+          assign initial_compare = one_time_compare_money
+          assign initial_save = one_time_save
+          assign initial_found = true
         endif
 
         if plan_index > 0
@@ -495,31 +527,46 @@
             class="purchase-offers__savings"
             ref="summarySavings"
             data-template="{{ section_settings.savings_label | escape }}"
-          ></p>
+          >
+            {%- if initial_save > 0 -%}
+              {{- section_settings.savings_label | replace: '[savings]', initial_save | escape -}}
+            {%- endif -%}
+          </p>
           <p class="purchase-offers__per-unit">
             <span
               class="purchase-offers__per-unit-price"
               ref="summaryPerUnit"
-            ></span>
+            >
+              {{- initial_per_unit | strip -}}
+            </span>
             <span class="purchase-offers__per-unit-suffix">
               {{- section_settings.per_unit_label | replace: '[unit]', section_settings.unit_label_singular -}}
             </span>
           </p>
           <p class="purchase-offers__per-day">
             <span aria-hidden="true">~</span>
-            <span ref="summaryPerDay"></span>
+            <span ref="summaryPerDay">{{ initial_per_day | strip }}</span>
             {{ section_settings.per_day_label }}
           </p>
         </div>
         <div class="purchase-offers__summary-total">
           <p class="purchase-offers__total-label">{{ section_settings.total_label }}</p>
           <p class="purchase-offers__total-value">
+            {%- comment -%}
+              Money strings are written by the component with `innerHTML`, because the
+              money filters may emit currency entities, so they are rendered unescaped
+              here to match.
+            {%- endcomment -%}
             <s
               class="purchase-offers__compare-at"
               ref="summaryCompareAt"
-              hidden
-            ></s>
-            <span ref="summaryTotal"></span>
+              {% unless initial_compare_cents > 0 %}
+                hidden
+              {% endunless %}
+            >
+              {%- if initial_compare_cents > 0 -%}{{ initial_compare | strip }}{%- endif -%}
+            </s>
+            <span ref="summaryTotal">{{ initial_total | strip }}</span>
           </p>
         </div>
       </div>
