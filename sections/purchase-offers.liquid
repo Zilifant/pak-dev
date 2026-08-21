@@ -320,6 +320,15 @@
     type="module"
   ></script>
 
+  {%- comment -%}
+    The nutrition label uses the theme's dialog component. `scripts.liquid` loads it at
+    low priority, so it is requested here too — the module is deduped by URL.
+  {%- endcomment -%}
+  <script
+    src="{{ 'dialog.js' | asset_url }}"
+    type="module"
+  ></script>
+
   {% render 'add-to-cart-button-styles' %}
   {% render 'fly-to-cart-styles' %}
   {% render 'dialog-styles' %}
@@ -849,7 +858,32 @@
         </p>
       {%- endif -%}
 
-      {%- if section_settings.show_nutrition_label -%}
+      {%- liquid
+        # The nutrition label image is product data, so it comes from the product's
+        # `custom.nutrition_label_image` metafield; the section setting is only a fallback
+        # for products that have not been given one. A `file_reference` metafield exposes
+        # the file through `.value`, so falling back to the field itself keeps this working
+        # if the value is exposed directly instead.
+        assign nutrition_metafield = product_resource.metafields.custom.nutrition_label_image
+        assign nutrition_image = nutrition_metafield.value | default: nutrition_metafield
+        if nutrition_image == blank
+          assign nutrition_image = section_settings.nutrition_image
+        endif
+
+        # Nothing to open a modal onto means no link: an empty popup is worse than none.
+        assign has_nutrition_content = false
+        if nutrition_image != blank or section_settings.nutrition_content != blank
+          assign has_nutrition_content = true
+        endif
+
+        assign nutrition_alt = section_settings.nutrition_heading
+        if nutrition_alt == blank
+          assign nutrition_alt = 'Nutrition label'
+        endif
+        assign nutrition_alt = nutrition_alt | append: ' - ' | append: product_resource.title
+      -%}
+
+      {%- if section_settings.show_nutrition_label and has_nutrition_content -%}
         <dialog-component class="purchase-offers__nutrition">
           <button
             type="button"
@@ -872,15 +906,15 @@
             >
               {{ section_settings.nutrition_heading }}
             </h3>
-            {%- if section_settings.nutrition_image != blank -%}
+            {%- if nutrition_image != blank -%}
               {{
-                section_settings.nutrition_image
+                nutrition_image
                 | image_url: width: 1200
                 | image_tag:
                   loading: 'lazy',
                   widths: '400, 700, 1000, 1200',
                   sizes: '(min-width: 750px) 600px, 90vw',
-                  alt: section_settings.nutrition_heading,
+                  alt: nutrition_alt,
                   class: 'purchase-offers__nutrition-image'
               }}
             {%- endif -%}
@@ -1803,6 +1837,10 @@
       "content": "Nutrition label"
     },
     {
+      "type": "paragraph",
+      "content": "The image comes from the product's custom.nutrition_label_image metafield. The link is hidden when neither that metafield, the fallback image nor the popup text is set."
+    },
+    {
       "type": "checkbox",
       "id": "show_nutrition_label",
       "label": "Show nutrition label link",
@@ -1823,7 +1861,8 @@
     {
       "type": "image_picker",
       "id": "nutrition_image",
-      "label": "Nutrition label image"
+      "label": "Fallback nutrition label image",
+      "info": "Used only for products with no custom.nutrition_label_image metafield."
     },
     {
       "type": "richtext",
