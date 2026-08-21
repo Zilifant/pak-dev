@@ -23,7 +23,7 @@
 
 {%- if product_resource == blank -%}
   {%- if request.design_mode -%}
-    <div class="section section--page-width purchase-offers">
+    <div class="section section--page-width offer-section purchase-offers">
       <p class="purchase-offers__placeholder">
         {{ 'products.product.unavailable' | t }} — add this section to a product template.
       </p>
@@ -346,18 +346,18 @@
       --purchase-offers-columns: {{ offer_count }};
       --purchase-offers-columns-rest: {{ offer_count | minus: 1 }};
       {%- if section_settings.surface_color != blank %}
-        --purchase-offers-surface: {{ section_settings.surface_color }};
+        --offer-section-surface: {{ section_settings.surface_color }};
       {%- endif -%}
       {%- if section_settings.ink_color != blank %}
-        --purchase-offers-ink: {{ section_settings.ink_color }};
-        --purchase-offers-ink-rgb: {{ section_settings.ink_color.rgb }};
+        --offer-section-ink: {{ section_settings.ink_color }};
+        --offer-section-ink-rgb: {{ section_settings.ink_color.rgb }};
       {%- endif -%}
       {%- if section_settings.on_ink_color != blank %}
-        --purchase-offers-on-ink: {{ section_settings.on_ink_color }};
+        --offer-section-on-ink: {{ section_settings.on_ink_color }};
       {%- endif -%}
       {%- if section_settings.accent_color != blank %}
-        --purchase-offers-accent: {{ section_settings.accent_color }};
-        --purchase-offers-accent-rgb: {{ section_settings.accent_color.rgb }};
+        --offer-section-accent: {{ section_settings.accent_color }};
+        --offer-section-accent-rgb: {{ section_settings.accent_color.rgb }};
       {%- endif -%}
     "
     {% if request.visual_preview_mode %}
@@ -374,7 +374,7 @@
     <div class="offer-section__inner purchase-offers__inner">
       <header class="offer-section__header purchase-offers__header">
         {%- if section_settings.subheading != blank -%}
-          <p class="offer-section__header-copy purchase-offers__subheading">{{ section_settings.subheading }}</p>
+          <p class="offer-section__header-copy offer-section__title purchase-offers__subheading">{{ section_settings.subheading }}</p>
         {%- endif -%}
       </header>
 
@@ -800,7 +800,7 @@
                 data-shipping="{{ gift_is_shipping }}"
                 data-unlocked="{{ gift_unlocked }}"
               >
-                <span class="purchase-offers__gift-media">
+                <span class="offer-section__media purchase-offers__gift-media">
                   {%- if gift_image -%}
                     {{
                       gift_image
@@ -810,7 +810,7 @@
                         widths: '120, 200, 400',
                         sizes: '(min-width: 750px) 160px, 30vw',
                         alt: '',
-                        class: 'purchase-offers__gift-image'
+                        class: 'offer-section__media-image'
                     }}
                   {%- endif -%}
                 </span>
@@ -1000,22 +1000,21 @@
 {%- endif -%}
 
 {% stylesheet %}
+  /*
+   * Colours, radii and the reading measure come from the offer-section library
+   * (assets/offer-sections.css) and are overridden inline from the colour
+   * settings. Only values the library has no opinion about live here.
+   */
   .purchase-offers {
-    /* Overridden per section by the colour settings; these are the design defaults. */
-    --purchase-offers-surface: #fdf1de;
-    --purchase-offers-ink: #2a1f17;
-    --purchase-offers-ink-rgb: 42 31 23;
-    --purchase-offers-on-ink: #ffffff;
-    --purchase-offers-accent: #b98a4b;
-    --purchase-offers-accent-rgb: 185 138 75;
+    /* Gift thumbnails fill their grid track rather than taking a fixed size. */
+    --offer-section-media-size: 100%;
 
-    --purchase-offers-muted: rgb(var(--purchase-offers-ink-rgb) / 0.62);
-    --purchase-offers-gift-border: rgb(var(--purchase-offers-ink-rgb) / 0.25);
-    --purchase-offers-radius: var(--style-border-radius-lg);
-    --purchase-offers-radius-pill: 999px;
-
-    /* Gap between the toggle track and the fill that slides inside it. */
-    --purchase-offers-track-padding: var(--padding-2xs);
+    /*
+     * Gap between the toggle track and the fill that slides inside it. Off the
+     * theme's padding scale on purpose: it steps 2px, 4px, 8px, and this control
+     * wants the 6px in between.
+     */
+    --purchase-offers-track-padding: 0.375rem;
     /* Width of the flagged offer relative to the others, floored at its flag's width. */
     --purchase-offers-lead-flex: 1.3fr;
     /* Inset of the toggle from the surrounding content. */
@@ -1026,10 +1025,6 @@
     .purchase-offers {
       --purchase-offers-track-inset: var(--margin-6xl);
     }
-  }
-
-  .purchase-offers [hidden] {
-    display: none !important;
   }
 
   /*
@@ -1051,30 +1046,8 @@
     text-align: center;
   }
 
-  .purchase-offers__inner {
-    display: grid;
-    gap: var(--gap-lg);
-    margin-inline: auto;
-    width: 100%;
-    max-width: 34rem;
-    color: var(--purchase-offers-ink);
-  }
-
-  .purchase-offers__header {
-    display: grid;
-    gap: var(--gap-2xs);
-    text-align: center;
-  }
-
   .purchase-offers__subheading {
-    margin: 0;
-  }
-
-  .purchase-offers__subheading {
-    font-family: var(--font-heading--family);
-    font-size: var(--font-size--xl);
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    --offer-section-title-size: var(--font-size--xl);
   }
 
   /* Subscribe & save / one-time segmented control */
@@ -1086,8 +1059,8 @@
     margin-inline: var(--purchase-offers-track-inset);
     border: 0;
     padding: var(--purchase-offers-track-padding);
-    border-radius: var(--purchase-offers-radius-pill);
-    background-color: var(--purchase-offers-surface);
+    border-radius: var(--offer-section-radius-pill);
+    background-color: var(--offer-section-surface);
   }
 
   /*
@@ -1100,8 +1073,8 @@
     inset-block: var(--purchase-offers-track-padding);
     inset-inline-start: var(--purchase-offers-track-padding);
     width: calc((100% - var(--purchase-offers-track-padding) * 2) / 2);
-    border-radius: var(--purchase-offers-radius-pill);
-    background-color: var(--purchase-offers-ink);
+    border-radius: var(--offer-section-radius-pill);
+    background-color: var(--offer-section-ink);
   }
 
   .purchase-offers__plans:has(.purchase-offers__plan:last-of-type .purchase-offers__plan-input:checked)
@@ -1109,14 +1082,12 @@
     transform: translateX(100%);
   }
 
-  @media screen and (prefers-reduced-motion: no-preference) {
-    .purchase-offers__plans-thumb {
-      transition: transform var(--animation-speed-slow) var(--ease-out-quad);
-    }
+  .purchase-offers__plans-thumb {
+    transition: transform var(--offer-section-motion-slow) var(--ease-out-quad);
+  }
 
-    .purchase-offers__plan-inner {
-      transition: color var(--animation-speed) var(--animation-easing);
-    }
+  .purchase-offers__plan-inner {
+    transition: color var(--offer-section-motion) var(--animation-easing);
   }
 
   /*
@@ -1155,7 +1126,7 @@
     justify-items: center;
     padding-block: var(--padding-xs);
     padding-inline: var(--padding-xs);
-    border-radius: var(--purchase-offers-radius-pill);
+    border-radius: var(--offer-section-radius-pill);
     text-align: center;
   }
 
@@ -1166,11 +1137,11 @@
 
   .purchase-offers__plan-note {
     font-size: var(--font-size--2xs);
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
   }
 
   .purchase-offers__plan-input:checked ~ .purchase-offers__plan-inner {
-    color: var(--purchase-offers-on-ink);
+    color: var(--offer-section-on-ink);
   }
 
   .purchase-offers__plan-input:checked ~ .purchase-offers__plan-inner .purchase-offers__plan-note {
@@ -1178,8 +1149,8 @@
   }
 
   .purchase-offers__plan-input:focus-visible ~ .purchase-offers__plan-inner {
-    outline: var(--focus-outline-width) solid var(--purchase-offers-ink);
-    outline-offset: var(--focus-outline-offset);
+    outline: var(--offer-section-focus-outline);
+    outline-offset: var(--offer-section-focus-offset);
   }
 
   /* Offer cards */
@@ -1223,21 +1194,21 @@
     justify-items: center;
     grid-row: 2;
     padding: var(--padding-md) var(--padding-2xs);
-    border-radius: var(--purchase-offers-radius);
-    background-color: var(--purchase-offers-surface);
+    border-radius: var(--offer-section-radius);
+    background-color: var(--offer-section-surface);
     text-align: center;
-    transition: background-color var(--animation-speed) var(--animation-easing),
-      color var(--animation-speed) var(--animation-easing);
+    transition: background-color var(--offer-section-motion) var(--animation-easing),
+      color var(--offer-section-motion) var(--animation-easing);
   }
 
   .purchase-offers__card-input:checked ~ .purchase-offers__card-inner {
-    background-color: var(--purchase-offers-ink);
-    color: var(--purchase-offers-on-ink);
+    background-color: var(--offer-section-ink);
+    color: var(--offer-section-on-ink);
   }
 
   .purchase-offers__card-input:focus-visible ~ .purchase-offers__card-inner {
-    outline: var(--focus-outline-width) solid var(--purchase-offers-ink);
-    outline-offset: var(--focus-outline-offset);
+    outline: var(--offer-section-focus-outline);
+    outline-offset: var(--offer-section-focus-offset);
   }
 
   .purchase-offers__card-count {
@@ -1247,7 +1218,7 @@
   }
 
   .purchase-offers__card-unit {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--2xs);
     line-height: 1.2;
   }
@@ -1266,9 +1237,9 @@
     transform: translateY(-50%);
     width: fit-content;
     padding: var(--padding-3xs) var(--padding-xs);
-    border-radius: var(--purchase-offers-radius-pill);
-    background-color: var(--purchase-offers-accent);
-    color: var(--purchase-offers-on-ink);
+    border-radius: var(--offer-section-radius-pill);
+    background-color: var(--offer-section-accent);
+    color: var(--offer-section-on-ink);
     font-size: var(--font-size--3xs);
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -1285,13 +1256,13 @@
   }
 
   .purchase-offers__card-savings {
-    color: var(--purchase-offers-accent);
+    color: var(--offer-section-accent);
     font-size: var(--font-size--2xs);
     font-weight: 600;
   }
 
   .purchase-offers__card-unavailable {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--2xs);
   }
 
@@ -1309,9 +1280,9 @@
     width: 100%;
     padding: var(--padding-sm) var(--padding-md);
     border: 0;
-    border-radius: var(--purchase-offers-radius);
-    background-color: var(--purchase-offers-surface);
-    color: var(--purchase-offers-ink);
+    border-radius: var(--offer-section-radius);
+    background-color: var(--offer-section-surface);
+    color: var(--offer-section-ink);
     font-size: var(--font-size--sm);
   }
 
@@ -1322,8 +1293,8 @@
     align-items: start;
     gap: var(--gap-md);
     padding: var(--padding-lg);
-    border-radius: var(--purchase-offers-radius);
-    background-color: var(--purchase-offers-surface);
+    border-radius: var(--offer-section-radius);
+    background-color: var(--offer-section-surface);
   }
 
   .purchase-offers__summary p {
@@ -1338,7 +1309,7 @@
   .purchase-offers__savings,
   .purchase-offers__per-day,
   .purchase-offers__total-label {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
   }
 
@@ -1374,14 +1345,14 @@
     align-items: baseline;
     justify-content: flex-end;
     gap: var(--gap-2xs);
-    color: var(--purchase-offers-accent);
+    color: var(--offer-section-accent);
     font-size: var(--font-size--xl);
     font-weight: 700;
     line-height: 1.2;
   }
 
   .purchase-offers__compare-at {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
     font-weight: 400;
   }
@@ -1389,9 +1360,9 @@
   .purchase-offers__gifts-empty {
     margin: 0;
     padding: var(--padding-md);
-    border: 1px dashed rgb(var(--purchase-offers-ink-rgb) / var(--opacity-30));
-    border-radius: var(--purchase-offers-radius);
-    color: var(--purchase-offers-muted);
+    border: var(--style-border-width) dashed var(--offer-section-border);
+    border-radius: var(--offer-section-radius);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
     text-align: center;
   }
@@ -1400,8 +1371,8 @@
     display: grid;
     gap: var(--gap-md);
     padding: var(--padding-lg);
-    border-radius: var(--purchase-offers-radius);
-    background-color: rgb(var(--purchase-offers-accent-rgb) / var(--opacity-10));
+    border-radius: var(--offer-section-radius);
+    background-color: rgb(var(--offer-section-accent-rgb) / var(--opacity-10));
   }
 
   .purchase-offers__gift-list {
@@ -1433,28 +1404,13 @@
     filter: grayscale(1);
   }
 
-  @media screen and (prefers-reduced-motion: no-preference) {
-    .purchase-offers__gift {
-      transition: opacity var(--animation-speed-slow) var(--animation-easing),
-        filter var(--animation-speed-slow) var(--animation-easing);
-    }
+  .purchase-offers__gift {
+    transition: opacity var(--offer-section-motion-slow) var(--animation-easing),
+      filter var(--offer-section-motion-slow) var(--animation-easing);
   }
 
   .purchase-offers__gift-media {
-    display: block;
-    width: 100%;
-    aspect-ratio: 1;
     margin-block-end: var(--margin-2xs);
-    border: var(--style-border-width) solid var(--purchase-offers-gift-border);
-    border-radius: var(--purchase-offers-radius);
-    background-color: var(--purchase-offers-surface);
-    overflow: hidden;
-  }
-
-  .purchase-offers__gift-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 
   .purchase-offers__gift-title {
@@ -1464,7 +1420,7 @@
   }
 
   .purchase-offers__gift-subtitle {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--2xs);
     line-height: 1.3;
   }
@@ -1482,7 +1438,7 @@
     align-content: center;
     margin: 0;
     min-block-size: calc(var(--purchase-offers-note-line-height) * var(--purchase-offers-note-lines) * 1em);
-    color: var(--purchase-offers-accent);
+    color: var(--offer-section-accent);
     font-size: var(--font-size--sm);
     font-weight: 600;
     line-height: var(--purchase-offers-note-line-height);
@@ -1540,17 +1496,13 @@
     display: grid;
   }
 
-  .purchase-offers__cta {
-    width: 100%;
-  }
-
   .purchase-offers__guarantee {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--gap-2xs);
     margin: 0;
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--sm);
   }
 
@@ -1560,7 +1512,7 @@
   }
 
   .purchase-offers__supporting {
-    color: var(--purchase-offers-muted);
+    color: var(--offer-section-muted);
     font-size: var(--font-size--xs);
     text-align: center;
   }

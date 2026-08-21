@@ -1,20 +1,90 @@
+/*
+ * Shared styling for the offer-section component library.
+ *
+ * Every section in the library carries `.offer-section` and consumes the
+ * `--offer-section-*` tokens below directly — there is no per-component alias
+ * layer. A section overrides a token in one of two places:
+ *
+ *   - inline from its schema settings, on the `.offer-section` element itself
+ *   - in its own rules, when it needs a value that differs from the default
+ *
+ * A component-scoped token (`--purchase-offers-*`, `--ingredient-list-*`) is
+ * only for values the library has no opinion about at all.
+ *
+ * Nothing in this file may name a component. Component rules live in that
+ * section's own `{% stylesheet %}` block.
+ */
+
 .offer-section {
+  /* Palette */
   --offer-section-surface: #fdf1de;
   --offer-section-ink: #2a1f17;
   --offer-section-ink-rgb: 42 31 23;
   --offer-section-on-ink: #ffffff;
   --offer-section-accent: #b98a4b;
   --offer-section-accent-rgb: 185 138 75;
+
+  /* Incidental labels and metadata; `-strong` is for running body copy. */
   --offer-section-muted: rgb(var(--offer-section-ink-rgb) / 0.62);
+  --offer-section-muted-strong: rgb(var(--offer-section-ink-rgb) / 0.72);
+
+  /* Hairlines. `-strong` is for a frame that has to read at thumbnail size. */
+  --offer-section-border: rgb(var(--offer-section-ink-rgb) / 0.16);
+  --offer-section-border-strong: rgb(var(--offer-section-ink-rgb) / 0.42);
+
+  /* Shape */
   --offer-section-radius: var(--style-border-radius-lg);
   --offer-section-radius-pill: 999px;
+  /* Reading width every section centres its content within. */
+  --offer-section-measure: 34rem;
+  /* Rhythm between a section's top-level blocks. */
+  --offer-section-inner-gap: var(--gap-lg);
+
+  /*
+   * Focus ring. Use `--offer-section-focus-offset-inset` instead when the ring
+   * sits on a filled box, so it lands inside the fill rather than outside it.
+   */
+  --offer-section-focus-outline: var(--focus-outline-width) solid var(--offer-section-ink);
+  --offer-section-focus-offset: var(--focus-outline-offset);
+  --offer-section-focus-offset-inset: calc(var(--focus-outline-width) * -1);
+
+  /* Square media thumbnail. `100%` fills its grid track; a length fixes it. */
+  --offer-section-media-size: 100%;
+  --offer-section-media-radius: var(--offer-section-radius);
+  --offer-section-media-border: var(--offer-section-border);
+
+  --offer-section-title-size: var(--font-size--md);
+
+  /*
+   * Motion. Components transition against these unconditionally — reduced
+   * motion is honoured once, here, rather than in every component.
+   */
+  --offer-section-motion: var(--animation-speed);
+  --offer-section-motion-slow: var(--animation-speed-slow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-section {
+    --offer-section-motion: 0.01ms;
+    --offer-section-motion-slow: 0.01ms;
+  }
+}
+
+/*
+ * Grid and flex children ignore `hidden`, and every component in the library
+ * toggles something from script or Liquid.
+ */
+.offer-section [hidden] {
+  display: none !important;
 }
 
 .offer-section__inner {
+  display: grid;
+  gap: var(--offer-section-inner-gap);
   width: 100%;
-  max-width: 34rem;
+  max-width: var(--offer-section-measure);
   margin-inline: auto;
-  color: var(--offer-section-component-ink, var(--offer-section-ink));
+  color: var(--offer-section-ink);
 }
 
 .offer-section__header {
@@ -27,245 +97,35 @@
   margin: 0;
 }
 
+/* Set `--offer-section-title-size` on the element itself to resize one title. */
+.offer-section__title {
+  font-family: var(--font-heading--family);
+  font-size: var(--offer-section-title-size);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Pair with the theme's `.button`, which supplies the shape, typography,
+ * padding and colour transition. This is the layout role only.
+ */
 .offer-section__cta {
   width: 100%;
 }
 
-.purchase-offers {
-  --purchase-offers-surface: var(--offer-section-surface);
-  --purchase-offers-ink: var(--offer-section-ink);
-  --purchase-offers-ink-rgb: var(--offer-section-ink-rgb);
-  --purchase-offers-on-ink: var(--offer-section-on-ink);
-  --purchase-offers-accent: var(--offer-section-accent);
-  --purchase-offers-accent-rgb: var(--offer-section-accent-rgb);
-  --purchase-offers-muted: rgb(var(--purchase-offers-ink-rgb) / 0.62);
-  --purchase-offers-radius: var(--offer-section-radius);
-  --purchase-offers-radius-pill: var(--offer-section-radius-pill);
-  --purchase-offers-track-padding: var(--padding-3xs);
-  --offer-section-component-ink: var(--purchase-offers-ink);
-}
-
-.ingredient-list {
-  --ingredient-list-card: var(--offer-section-surface);
-  --ingredient-list-ink: var(--offer-section-ink);
-  --ingredient-list-ink-rgb: var(--offer-section-ink-rgb);
-  --ingredient-list-on-ink: var(--offer-section-on-ink);
-  --ingredient-list-accent: var(--offer-section-accent);
-  --ingredient-list-muted: rgb(var(--offer-section-ink-rgb) / 0.72);
-  --ingredient-list-border: rgb(var(--offer-section-ink-rgb) / 0.16);
-  --ingredient-list-image-border: rgb(var(--offer-section-ink-rgb) / 0.42);
-  --ingredient-list-description-inset: 4.25rem;
-  --offer-section-component-ink: var(--ingredient-list-ink);
-
-  color: var(--ingredient-list-ink);
-}
-
-.ingredient-list__inner {
-  display: grid;
-  gap: var(--gap-lg);
-}
-
-.ingredient-list__title {
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.ingredient-list__subtitle {
-  color: var(--ingredient-list-muted);
-  font-size: var(--font-size--sm);
-  line-height: 1.4;
-}
-
-.ingredient-list__items {
-  display: grid;
-  gap: var(--gap-xs);
-}
-
-.ingredient-list__item {
-  overflow: clip;
-  border: 1px solid var(--ingredient-list-border);
-  border-radius: var(--offer-section-radius);
-  background-color: var(--ingredient-list-card);
-}
-
-.ingredient-list__summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--gap-sm);
-  min-height: 4rem;
-  padding: var(--padding-xs) var(--padding-sm);
-  cursor: pointer;
-  list-style: none;
-}
-
-.ingredient-list__summary--no-image {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.ingredient-list__summary::-webkit-details-marker {
-  display: none;
-}
-
-.ingredient-list__summary:focus-visible {
-  outline: var(--focus-outline-width) solid var(--ingredient-list-ink);
-  outline-offset: calc(var(--focus-outline-width) * -1);
-}
-
-.ingredient-list__image-wrapper {
+.offer-section__media {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  inline-size: var(--offer-section-media-size);
+  aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid var(--ingredient-list-image-border);
-  border-radius: var(--offer-section-radius-pill);
-  background-color: var(--ingredient-list-card);
+  border: var(--style-border-width) solid var(--offer-section-media-border);
+  border-radius: var(--offer-section-media-radius);
+  background-color: var(--offer-section-surface);
 }
 
-.ingredient-list__image {
+.offer-section__media-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.ingredient-list__copy {
-  display: grid;
-  gap: var(--gap-3xs);
-  min-width: 0;
-}
-
-.ingredient-list__item-title,
-.ingredient-list__item-subtitle {
-  margin: 0;
-  overflow-wrap: break-word;
-}
-
-.ingredient-list__item-title {
-  font-family: var(--font-heading--family);
-  font-size: var(--font-size--md);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.15;
-}
-
-.ingredient-list__item-subtitle {
-  color: var(--ingredient-list-accent);
-  font-size: var(--font-size--xs);
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.ingredient-list__icon {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: var(--minimum-touch-target);
-  height: var(--minimum-touch-target);
-  color: var(--ingredient-list-accent);
-  transform: rotate(0deg);
-  transition: transform var(--animation-speed) var(--animation-easing);
-}
-
-.ingredient-list__icon::before,
-.ingredient-list__icon::after {
-  position: absolute;
-  width: 0.75rem;
-  height: 0.1rem;
-  background-color: currentcolor;
-  content: '';
-}
-
-.ingredient-list__icon::after {
-  transform: rotate(90deg);
-}
-
-.ingredient-list__item[open] .ingredient-list__icon {
-  transform: rotate(45deg);
-}
-
-.ingredient-list__item::details-content,
-.ingredient-list__content {
-  block-size: 0;
-  overflow-y: clip;
-  opacity: 0;
-  interpolate-size: allow-keywords;
-  transition: content-visibility var(--animation-speed-slow) allow-discrete,
-    block-size var(--animation-speed-slow) var(--animation-easing),
-    opacity var(--animation-speed-slow) var(--animation-easing);
-}
-
-.ingredient-list__item[open]::details-content,
-.ingredient-list__item[open] .ingredient-list__content {
-  block-size: auto;
-  opacity: 1;
-
-  @starting-style {
-    block-size: 0;
-    opacity: 0;
-  }
-}
-
-.ingredient-list__description {
-  padding-block: 0 var(--padding-md);
-  padding-inline: var(--ingredient-list-description-inset) calc(var(--padding-sm) + var(--minimum-touch-target));
-  color: var(--ingredient-list-muted);
-  font-size: var(--font-size--sm);
-}
-
-.ingredient-list__description > :first-child {
-  margin-block-start: 0;
-}
-
-.ingredient-list__description > :last-child {
-  margin-block-end: 0;
-}
-
-.ingredient-list__item--no-image {
-  --ingredient-list-description-inset: var(--padding-sm);
-}
-
-.ingredient-list__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 3rem;
-  padding: var(--padding-sm) var(--padding-lg);
-  border: 0;
-  border-radius: var(--offer-section-radius-pill);
-  background-color: var(--ingredient-list-ink);
-  color: var(--ingredient-list-on-ink);
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  text-decoration: none;
-  transition: opacity var(--animation-speed) var(--animation-easing);
-}
-
-.ingredient-list__button:hover {
-  opacity: var(--opacity-90);
-}
-
-.ingredient-list__button:focus-visible {
-  outline: var(--focus-outline-width) solid var(--ingredient-list-ink);
-  outline-offset: var(--focus-outline-offset);
-}
-
-@media screen and (max-width: 749px) {
-  .ingredient-list__inner {
-    gap: var(--gap-md);
-  }
-
-  .ingredient-list__items {
-    gap: var(--gap-2xs);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ingredient-list__icon,
-  .ingredient-list__item::details-content,
-  .ingredient-list__content,
-  .ingredient-list__button {
-    transition-duration: 0.01ms;
-  }
 }

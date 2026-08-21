@@ -69,7 +69,7 @@
           >
             <summary class="ingredient-list__summary{% if item_image == blank %} ingredient-list__summary--no-image{% endif %}">
               {%- if item_image != blank -%}
-                <span class="ingredient-list__image-wrapper">
+                <span class="offer-section__media">
                   {{
                     item_image
                     | image_url: width: 132
@@ -78,14 +78,14 @@
                       widths: '44, 88, 132',
                       sizes: '44px',
                       alt: '',
-                      class: 'ingredient-list__image'
+                      class: 'offer-section__media-image'
                   }}
                 </span>
               {%- endif -%}
 
               <span class="ingredient-list__copy">
                 {%- if item_title != blank -%}
-                  <span class="ingredient-list__item-title">{{ item_title | escape }}</span>
+                  <span class="offer-section__title ingredient-list__item-title">{{ item_title | escape }}</span>
                 {%- endif -%}
                 {%- if item_subtitle != blank -%}
                   <span class="ingredient-list__item-subtitle">{{ item_subtitle | escape }}</span>
@@ -113,7 +113,7 @@
 
     {%- if section_settings.button_text != blank and section_settings.button_url != blank -%}
       <a
-        class="offer-section__cta ingredient-list__button"
+        class="button offer-section__cta ingredient-list__button"
         href="{{ section_settings.button_url }}"
       >
         {{ section_settings.button_text | escape }}
@@ -121,6 +121,184 @@
     {%- endif -%}
   </div>
 </div>
+
+{% stylesheet %}
+  /*
+   * Component styling. Colours, shape, focus, motion and the media and title
+   * primitives come from the offer-section library (assets/offer-sections.css);
+   * only what is specific to this section lives here.
+   */
+  .ingredient-list {
+    --offer-section-media-size: 2.75rem;
+    --offer-section-media-radius: var(--offer-section-radius-pill);
+    --offer-section-media-border: var(--offer-section-border-strong);
+
+    --ingredient-list-description-inset: 4.25rem;
+  }
+
+  .ingredient-list__title {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .ingredient-list__subtitle {
+    color: var(--offer-section-muted-strong);
+    font-size: var(--font-size--sm);
+    line-height: 1.4;
+  }
+
+  .ingredient-list__items {
+    display: grid;
+    gap: var(--gap-xs);
+  }
+
+  .ingredient-list__item {
+    overflow: clip;
+    border: var(--style-border-width) solid var(--offer-section-border);
+    border-radius: var(--offer-section-radius);
+    background-color: var(--offer-section-surface);
+  }
+
+  .ingredient-list__summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--gap-sm);
+    min-height: 4rem;
+    padding: var(--padding-xs) var(--padding-sm);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .ingredient-list__summary--no-image {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ingredient-list__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ingredient-list__summary:focus-visible {
+    outline: var(--offer-section-focus-outline);
+    outline-offset: var(--offer-section-focus-offset-inset);
+  }
+
+  .ingredient-list__copy {
+    display: grid;
+    gap: var(--gap-3xs);
+    min-width: 0;
+  }
+
+  .ingredient-list__item-title,
+  .ingredient-list__item-subtitle {
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+
+  .ingredient-list__item-title {
+    line-height: 1.15;
+  }
+
+  .ingredient-list__item-subtitle {
+    color: var(--offer-section-accent);
+    font-size: var(--font-size--xs);
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .ingredient-list__icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--minimum-touch-target);
+    height: var(--minimum-touch-target);
+    color: var(--offer-section-accent);
+    transform: rotate(0deg);
+    transition: transform var(--offer-section-motion) var(--animation-easing);
+  }
+
+  .ingredient-list__icon::before,
+  .ingredient-list__icon::after {
+    position: absolute;
+    width: 0.75rem;
+    height: 0.1rem;
+    background-color: currentcolor;
+    content: '';
+  }
+
+  .ingredient-list__icon::after {
+    transform: rotate(90deg);
+  }
+
+  .ingredient-list__item[open] .ingredient-list__icon {
+    transform: rotate(45deg);
+  }
+
+  .ingredient-list__item::details-content,
+  .ingredient-list__content {
+    block-size: 0;
+    overflow-y: clip;
+    opacity: 0;
+    interpolate-size: allow-keywords;
+    transition: content-visibility var(--offer-section-motion-slow) allow-discrete,
+      block-size var(--offer-section-motion-slow) var(--animation-easing),
+      opacity var(--offer-section-motion-slow) var(--animation-easing);
+  }
+
+  .ingredient-list__item[open]::details-content,
+  .ingredient-list__item[open] .ingredient-list__content {
+    block-size: auto;
+    opacity: 1;
+
+    @starting-style {
+      block-size: 0;
+      opacity: 0;
+    }
+  }
+
+  .ingredient-list__description {
+    padding-block: 0 var(--padding-md);
+    padding-inline: var(--ingredient-list-description-inset) calc(var(--padding-sm) + var(--minimum-touch-target));
+    color: var(--offer-section-muted-strong);
+    font-size: var(--font-size--sm);
+  }
+
+  .ingredient-list__description > :first-child {
+    margin-block-start: 0;
+  }
+
+  .ingredient-list__description > :last-child {
+    margin-block-end: 0;
+  }
+
+  .ingredient-list__item--no-image {
+    --ingredient-list-description-inset: var(--padding-sm);
+  }
+
+  /*
+   * The theme's `.button` supplies everything but the colours, which stay wired to
+   * this section's settings. The hover pair re-asserts them against `.button:hover`.
+   */
+  .ingredient-list__button,
+  .ingredient-list__button:hover {
+    --button-background-color: var(--offer-section-ink);
+    --button-color: var(--offer-section-on-ink);
+  }
+
+  .ingredient-list__button:hover {
+    opacity: var(--opacity-90);
+  }
+
+  @media screen and (max-width: 749px) {
+    .ingredient-list {
+      --offer-section-inner-gap: var(--gap-md);
+    }
+
+    .ingredient-list__items {
+      gap: var(--gap-2xs);
+    }
+  }
+{% endstylesheet %}
 
 {% schema %}
 {
