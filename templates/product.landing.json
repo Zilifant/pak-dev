@@ -48,12 +48,19 @@
         "accent_color": "#b98a4b",
         "padding-block-start": 48,
         "padding-block-end": 48,
-        "gifts_note_subscription": "Your subscription includes free gifts today!",
-        "gifts_note_one_time": "Subscribe for up to [count] free gifts",
-        "gifts_note_no_subscription": "Your purchase includes free gifts today!",
+        "gifts_note_subscription": "Your subscription includes [rewards] today!",
+        "gifts_note_one_time": "Subscribe to get [potential]",
+        "gifts_note_no_subscription": "Your purchase includes [rewards] today!",
         "gift_unlocked_label": "Included with your order",
         "gift_locked_label": "Not yet unlocked",
-        "gift_metaobject_type": "gift_with_purchase"
+        "gift_metaobject_type": "gift_with_purchase",
+        "gifts_note_none": "Add more to unlock your free gifts",
+        "gift_word_singular": "free gift",
+        "gift_word_plural": "free gifts",
+        "shipping_gift_title": "Free Shipping",
+        "shipping_reward_label": "free shipping",
+        "rewards_join_word": "and",
+        "gifts_up_to_word": "up to"
       }
     },
     "ingredient_list_Y8xtrU": {

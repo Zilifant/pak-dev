@@ -174,12 +174,12 @@ class PurchaseOffersComponent extends Component {
    * @param {boolean} isSubscription
    */
   #updateGifts(cents, isSubscription) {
-    const { giftsNote, gifts, giftStatuses } = this.refs;
-
-    if (giftsNote) {
-      const next = isSubscription ? giftsNote.dataset.subscriptionNote : giftsNote.dataset.oneTimeNote;
-      if (next != null) giftsNote.textContent = next;
-    }
+    const { gifts, giftStatuses } = this.refs;
+    let unlockedCount = 0;
+    let shippingUnlocked = false;
+    let potentialCount = 0;
+    let potentialShipping = false;
+    const hasSubscription = this.refs.giftsNote?.dataset.hasSubscription === 'true';
 
     gifts?.forEach((gift, index) => {
       if (!(gift instanceof HTMLElement)) return;
@@ -190,6 +190,20 @@ class PurchaseOffersComponent extends Component {
 
       gift.dataset.unlocked = String(unlocked);
 
+      const isShipping = gift.dataset.shipping === 'true';
+
+      // Free shipping is named in the heading rather than counted among the gifts.
+      if (unlocked) {
+        if (isShipping) shippingUnlocked = true;
+        else unlockedCount += 1;
+      }
+
+      // What subscribing would add, for the one-time upsell.
+      if (hasSubscription && !isSubscription && subscriptionOnly && !unlocked) {
+        if (isShipping) potentialShipping = true;
+        else potentialCount += 1;
+      }
+
       const status = giftStatuses?.[index];
       if (status) {
         status.textContent = unlocked
@@ -197,6 +211,58 @@ class PurchaseOffersComponent extends Component {
           : this.dataset.giftLockedLabel ?? '';
       }
     });
+
+    this.#updateGiftsNote({ unlockedCount, shippingUnlocked, potentialCount, potentialShipping, isSubscription });
+  }
+
+  /**
+   * Writes the free gift heading for the current selection, resolving `[rewards]` to the
+   * composed phrase, `[unlocked]` to the gift count and `[gifts]` to the singular or
+   * plural wording.
+   *
+   * @param {object} state
+   * @param {number} state.unlockedCount - Unlocked gifts, excluding free shipping.
+   * @param {boolean} state.shippingUnlocked
+   * @param {number} state.potentialCount - Gifts a subscription would add, excluding shipping.
+   * @param {boolean} state.potentialShipping
+   * @param {boolean} state.isSubscription
+   */
+  #updateGiftsNote({ unlockedCount, shippingUnlocked, potentialCount, potentialShipping, isSubscription }) {
+    const note = this.refs.giftsNote;
+    if (!note) return;
+
+    const { subscriptionNote, oneTimeNote, purchaseNote, noneNote, giftSingular, giftPlural, shippingLabel, joinWord, upToWord } =
+      note.dataset;
+
+    const join = ` ${joinWord ?? 'and'} `;
+    const wordFor = (count) => (count === 1 ? giftSingular ?? '' : giftPlural ?? '');
+
+    const earned = [];
+    if (shippingUnlocked && shippingLabel) earned.push(shippingLabel);
+    if (unlockedCount > 0) earned.push(`${unlockedCount} ${wordFor(unlockedCount)}`);
+    const rewards = earned.join(join);
+
+    const upcoming = [];
+    if (potentialShipping && shippingLabel) upcoming.push(shippingLabel);
+    if (potentialCount > 0) upcoming.push(`${upToWord ?? 'up to'} ${potentialCount} ${wordFor(potentialCount)}`.trim());
+    const potential = upcoming.join(join);
+
+    let template;
+    if (isSubscription) template = subscriptionNote;
+    // The subscribe upsell only earns its place when subscribing would add something.
+    else template = potential ? oneTimeNote : purchaseNote ?? oneTimeNote;
+    if (template == null) return;
+
+    // A template that never quotes what was earned is left alone, so only wording that
+    // would read "0 free gifts" falls back to the empty state.
+    const quotesEarned = template.includes('[unlocked]') || template.includes('[rewards]');
+    if (!rewards && noneNote && quotesEarned) template = noneNote;
+
+    note.textContent = template
+      .replaceAll('[potential]', potential)
+      .replaceAll('[rewards]', rewards)
+      .replaceAll('[unlocked]', String(unlockedCount))
+      .replaceAll('[gifts]', wordFor(unlockedCount));
   }
 
   /**

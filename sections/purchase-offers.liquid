@@ -587,8 +587,101 @@
         {%- liquid
           assign gift_count = gifts.size
 
+          # How many the default selection actually unlocks, so the first paint states a
+          # real number rather than a placeholder the component corrects a moment later.
+          assign shipping_match = section_settings.shipping_gift_title | downcase | strip
+
+          assign default_unlocked = 0
+          assign default_shipping = false
+          assign potential_gifts = 0
+          assign potential_shipping = false
+          for gift in gifts
+            assign check_title = gift.title.value | default: gift.title | downcase | strip
+            assign check_is_shipping = false
+            if shipping_match != blank and check_title == shipping_match
+              assign check_is_shipping = true
+            endif
+
+            assign check_threshold = gift.threshold.value | default: gift.threshold | times: 1
+            assign check_sub_only_raw = gift.subscription_only.value
+            if check_sub_only_raw == blank
+              assign check_sub_only_raw = gift.subscription_only
+            endif
+            assign check_sub_only = false
+            if check_sub_only_raw == true
+              assign check_sub_only = true
+            endif
+
+            assign check_unlocked = false
+            if default_total_cents >= check_threshold
+              if check_sub_only == false or default_plan_key != 'onetime'
+                assign check_unlocked = true
+              endif
+            endif
+
+            if check_unlocked
+              if check_is_shipping
+                assign default_shipping = true
+              else
+                assign default_unlocked = default_unlocked | plus: 1
+              endif
+            endif
+
+            # What subscribing would add: only meaningful while on a one-time purchase,
+            # and only for a product that actually offers a subscription.
+            if has_subscription and default_plan_key == 'onetime' and check_sub_only and check_unlocked == false
+              if check_is_shipping
+                assign potential_shipping = true
+              else
+                assign potential_gifts = potential_gifts | plus: 1
+              endif
+            endif
+          endfor
+
+          assign gift_word = section_settings.gift_word_plural
+          if default_unlocked == 1
+            assign gift_word = section_settings.gift_word_singular
+          endif
+
+          # Free shipping is named rather than counted, so it reads as
+          # "free shipping and 2 free gifts" instead of "3 free gifts".
+          assign reward_parts = ''
+          if default_shipping
+            assign reward_parts = section_settings.shipping_reward_label
+          endif
+          if default_unlocked > 0
+            assign gift_phrase = default_unlocked | append: ' ' | append: gift_word
+            if reward_parts == blank
+              assign reward_parts = gift_phrase
+            else
+              assign reward_parts = reward_parts | append: ' ' | append: section_settings.rewards_join_word | append: ' ' | append: gift_phrase
+            endif
+          endif
+
+          assign potential_word = section_settings.gift_word_plural
+          if potential_gifts == 1
+            assign potential_word = section_settings.gift_word_singular
+          endif
+
+          assign potential_parts = ''
+          if potential_shipping
+            assign potential_parts = section_settings.shipping_reward_label
+          endif
+          if potential_gifts > 0
+            assign potential_phrase = section_settings.gifts_up_to_word | append: ' ' | append: potential_gifts | append: ' ' | append: potential_word
+            assign potential_phrase = potential_phrase | strip
+            if potential_parts == blank
+              assign potential_parts = potential_phrase
+            else
+              assign potential_parts = potential_parts | append: ' ' | append: section_settings.rewards_join_word | append: ' ' | append: potential_phrase
+            endif
+          endif
+
+          # `[count]` is fixed, so it is resolved here; `[unlocked]` and `[gifts]` change
+          # with the selection and stay as tokens for the component to fill in.
           assign note_subscription = section_settings.gifts_note_subscription | replace: '[count]', gift_count
           assign note_one_time = section_settings.gifts_note_one_time | replace: '[count]', gift_count
+          assign note_none = section_settings.gifts_note_none | replace: '[count]', gift_count
           assign note_no_subscription = section_settings.gifts_note_no_subscription | replace: '[count]', gift_count
 
           unless has_subscription
@@ -597,10 +690,31 @@
           endunless
 
           if default_plan_key == 'onetime'
-            assign note_initial = note_one_time
+            # The subscribe upsell only earns its place when subscribing would actually
+            # add something; otherwise say what this purchase already includes.
+            if potential_parts != blank
+              assign note_template = note_one_time
+            else
+              assign note_template = note_no_subscription
+            endif
           else
-            assign note_initial = note_subscription
+            assign note_template = note_subscription
           endif
+
+          # Only a template that quotes the unlocked count needs the empty-state wording;
+          # this leaves an "up to [count]" upsell alone when nothing is unlocked yet.
+          assign note_quotes_count = false
+          if note_template contains '[unlocked]' or note_template contains '[rewards]'
+            assign note_quotes_count = true
+          endif
+          if reward_parts == blank and note_none != blank and note_quotes_count
+            assign note_template = note_none
+          endif
+
+          assign note_initial = note_template | replace: '[potential]', potential_parts
+          assign note_initial = note_initial | replace: '[rewards]', reward_parts
+          assign note_initial = note_initial | replace: '[unlocked]', default_unlocked
+          assign note_initial = note_initial | replace: '[gifts]', gift_word
         -%}
         <div class="purchase-offers__gifts">
           {%- if note_initial != blank -%}
@@ -609,6 +723,14 @@
               ref="giftsNote"
               data-subscription-note="{{ note_subscription | escape }}"
               data-one-time-note="{{ note_one_time | escape }}"
+              data-none-note="{{ note_none | escape }}"
+              data-purchase-note="{{ note_no_subscription | escape }}"
+              data-has-subscription="{{ has_subscription }}"
+              data-up-to-word="{{ section_settings.gifts_up_to_word | escape }}"
+              data-gift-singular="{{ section_settings.gift_word_singular | escape }}"
+              data-gift-plural="{{ section_settings.gift_word_plural | escape }}"
+              data-shipping-label="{{ section_settings.shipping_reward_label | escape }}"
+              data-join-word="{{ section_settings.rewards_join_word | escape }}"
             >
               {{ note_initial }}
             </p>
@@ -651,6 +773,12 @@
                   assign gift_subscription_only = true
                 endif
 
+                assign gift_is_shipping = false
+                assign gift_title_match = gift_title | downcase | strip
+                if shipping_match != blank and gift_title_match == shipping_match
+                  assign gift_is_shipping = true
+                endif
+
                 # Server-rendered state matches the default selection so the panel is
                 # correct before the component hydrates.
                 assign gift_unlocked = false
@@ -669,6 +797,7 @@
                 ref="gifts[]"
                 data-threshold="{{ gift_threshold }}"
                 data-subscription-only="{{ gift_subscription_only }}"
+                data-shipping="{{ gift_is_shipping }}"
                 data-unlocked="{{ gift_unlocked }}"
               >
                 <span class="purchase-offers__gift-media">
@@ -1340,12 +1469,25 @@
     line-height: 1.3;
   }
 
+  /*
+   * The wording changes with the selection, so the note reserves a fixed two lines and
+   * centres within them. Without this the panel jumps height whenever the heading moves
+   * between one and two lines. `balance` keeps those two lines close to even.
+   */
   .purchase-offers__note {
+    --purchase-offers-note-line-height: 1.35;
+    --purchase-offers-note-lines: 2;
+
+    display: grid;
+    align-content: center;
     margin: 0;
+    min-block-size: calc(var(--purchase-offers-note-line-height) * var(--purchase-offers-note-lines) * 1em);
     color: var(--purchase-offers-accent);
     font-size: var(--font-size--sm);
     font-weight: 600;
+    line-height: var(--purchase-offers-note-line-height);
     text-align: center;
+    text-wrap: balance;
   }
 
   /* Nutrition label */
@@ -1625,23 +1767,72 @@
       "info": "The definition's type handle. It must have Storefronts access enabled and published entries."
     },
     {
+      "type": "paragraph",
+      "content": "Headings accept [rewards] for what the selection already earns (e.g. \"free shipping and 2 free gifts\"), [potential] for what subscribing would add (e.g. \"free shipping and up to 2 free gifts\"), [unlocked] for the gift count on its own, [gifts] for the gift wording, and [count] for the total number of gifts."
+    },
+    {
       "type": "text",
       "id": "gifts_note_subscription",
       "label": "Heading with a subscription",
-      "default": "Your subscription includes free gifts today!",
-      "info": "Use [count] to insert the number of gifts."
+      "default": "Your subscription includes [rewards] today!"
     },
     {
       "type": "text",
       "id": "gifts_note_one_time",
       "label": "Heading with a one-time purchase",
-      "default": "Subscribe for up to [count] free gifts"
+      "default": "Subscribe to get [potential]",
+      "info": "Shown only when subscribing would add something. Otherwise the purchase heading is used."
     },
     {
       "type": "text",
       "id": "gifts_note_no_subscription",
       "label": "Heading when the product has no subscription",
-      "default": "Your purchase includes free gifts today!"
+      "default": "Your purchase includes [rewards] today!"
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_none",
+      "label": "Heading when nothing is unlocked yet",
+      "default": "Add more to unlock your free gifts",
+      "info": "Replaces headings that quote [unlocked], so they never read \"0 free gifts\"."
+    },
+    {
+      "type": "text",
+      "id": "gift_word_singular",
+      "label": "Gift wording (one)",
+      "default": "free gift"
+    },
+    {
+      "type": "text",
+      "id": "gift_word_plural",
+      "label": "Gift wording (many)",
+      "default": "free gifts"
+    },
+    {
+      "type": "text",
+      "id": "shipping_gift_title",
+      "label": "Free shipping gift title",
+      "default": "Free Shipping",
+      "info": "A gift whose title matches this is named in the heading instead of counted. Case insensitive. Leave blank to count every gift."
+    },
+    {
+      "type": "text",
+      "id": "shipping_reward_label",
+      "label": "Free shipping wording",
+      "default": "free shipping"
+    },
+    {
+      "type": "text",
+      "id": "rewards_join_word",
+      "label": "Rewards joining word",
+      "default": "and"
+    },
+    {
+      "type": "text",
+      "id": "gifts_up_to_word",
+      "label": "\"Up to\" wording",
+      "default": "up to",
+      "info": "Prefixes the gift count in [potential], since thresholds may not be met yet."
     },
     {
       "type": "text",
