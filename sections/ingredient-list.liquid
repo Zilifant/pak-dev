@@ -133,6 +133,14 @@
     --offer-section-media-border: var(--offer-section-border-strong);
 
     --ingredient-list-description-inset: 4.25rem;
+
+    /*
+     * One duration for the whole disclosure, so the icon's spin and the content box's
+     * expansion start, ease and land together. Derived from the library's slow token
+     * rather than stated in seconds, so the library's reduced-motion override still
+     * collapses this to nothing along with everything else.
+     */
+    --ingredient-list-disclosure-motion: calc(var(--offer-section-motion-slow) * 2);
   }
 
   .ingredient-list__title {
@@ -213,7 +221,7 @@
     height: var(--minimum-touch-target);
     color: var(--offer-section-accent);
     transform: rotate(0deg);
-    transition: transform var(--offer-section-motion) var(--animation-easing);
+    transition: transform var(--ingredient-list-disclosure-motion) var(--animation-easing);
   }
 
   .ingredient-list__icon::before,
@@ -229,8 +237,12 @@
     transform: rotate(90deg);
   }
 
+  /*
+   * The two bars sit 90 degrees apart, so every 45 + n * 90 lands on the same cross.
+   * Going the extra quarter turn spins the icon rather than just tipping it.
+   */
   .ingredient-list__item[open] .ingredient-list__icon {
-    transform: rotate(45deg);
+    transform: rotate(135deg);
   }
 
   .ingredient-list__item::details-content,
@@ -239,9 +251,9 @@
     overflow-y: clip;
     opacity: 0;
     interpolate-size: allow-keywords;
-    transition: content-visibility var(--offer-section-motion-slow) allow-discrete,
-      block-size var(--offer-section-motion-slow) var(--animation-easing),
-      opacity var(--offer-section-motion-slow) var(--animation-easing);
+    transition: content-visibility var(--ingredient-list-disclosure-motion) allow-discrete,
+      block-size var(--ingredient-list-disclosure-motion) var(--animation-easing),
+      opacity var(--ingredient-list-disclosure-motion) var(--animation-easing);
   }
 
   .ingredient-list__item[open]::details-content,
