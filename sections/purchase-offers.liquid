@@ -80,7 +80,6 @@
     on first paint.
   {%- endcomment -%}
   {%- liquid
-    assign max_savings = 0
     assign fallback_offer = 0
     assign default_offer = section_settings.default_offer
     if default_offer > offer_count
@@ -164,9 +163,6 @@
             if plan_reference > plan_total
               assign plan_save = plan_reference | minus: plan_total | times: 100 | divided_by: plan_reference | floor
             endif
-            if plan_save > max_savings
-              assign max_savings = plan_save
-            endif
 
             assign plan_per_unit = plan_total | divided_by: units
             assign plan_per_day = plan_total | divided_by: total_days
@@ -188,6 +184,7 @@
             endif
           -%}
           "{{ plan.id }}": {
+          "cents": {{ plan_total }},
           "total": {{ plan_total_money | strip | json }},
           "compareAt": {% if plan_compare > 0 %}{{ plan_compare_money | strip | json }}{% else %}null{% endif %},
           "perUnit": {{ plan_per_unit_money | strip | json }},
@@ -203,10 +200,6 @@
         if reference_price > one_time_total
           assign one_time_save = reference_price | minus: one_time_total | times: 100 | divided_by: reference_price | floor
         endif
-        if allow_one_time and one_time_save > max_savings
-          assign max_savings = one_time_save
-        endif
-
         assign one_time_per_unit = one_time_total | divided_by: units
         assign one_time_per_day = one_time_total | divided_by: total_days
 
@@ -227,6 +220,7 @@
         endif
       -%}
       "onetime": {
+      "cents": {{ one_time_total }},
       "total": {{ one_time_total_money | strip | json }},
       "compareAt": {% if one_time_compare > 0 %}{{ one_time_compare_money | strip | json }}{% else %}null{% endif %},
       "perUnit": {{ one_time_per_unit_money | strip | json }},
@@ -289,17 +283,35 @@
     endif
     assign sold_out_text = 'products.product.sold_out' | t
 
-    # With no compare-at price, no bundle discount and no discounted selling plan there is
-    # nothing to claim, so the heading falls back rather than advertising "0% Off".
-    assign heading_text = section_settings.heading
-    if heading_text contains '[savings]'
-      if max_savings > 0
-        assign heading_text = heading_text | replace: '[savings]', max_savings
-      else
-        assign heading_text = section_settings.heading_no_savings
-      endif
-    endif
     assign form_id = 'PurchaseOffers-' | append: section.id
+
+    # Order total of the default selection, in minor units, for the initial gift state.
+    assign default_total_cents = default_variant.price | times: default_quantity
+    unless default_plan_key == 'onetime'
+      for allocation in default_variant.selling_plan_allocations
+        if allocation.selling_plan_id == default_plan_key
+          assign default_total_cents = allocation.price | times: default_quantity
+          break
+        endif
+      endfor
+    endunless
+
+    # Free gifts come from a metaobject definition. `shop.metaobjects` only exposes
+    # definitions whose Storefronts access is enabled, and only published entries, so this
+    # is nil rather than an error when either is missing.
+    #
+    # They unlock cumulatively as the order total passes each threshold, so they are
+    # ordered by threshold ascending. Liquid cannot sort drops by a nested field, so
+    # thresholds are zero-padded into sortable strings paired with their index.
+    assign gift_type = section_settings.gift_metaobject_type | default: 'gift_with_purchase'
+    assign gift_definition = shop.metaobjects[gift_type]
+    assign gifts = gift_definition.values
+    assign gift_order = ''
+    for gift in gifts
+      assign padded = gift.threshold.value | default: 0 | prepend: '0000000000' | slice: -10, 10
+      assign gift_order = gift_order | append: padded | append: '-' | append: forloop.index0 | append: ','
+    endfor
+    assign gift_order = gift_order | split: ',' | sort
   -%}
 
   <script
@@ -326,6 +338,8 @@
     data-add-to-cart-text="{{ add_to_cart_text | escape }}"
     data-sold-out-text="{{ sold_out_text | escape }}"
     data-default-plan="{{ default_plan_key }}"
+    data-gift-unlocked-label="{{ section_settings.gift_unlocked_label | escape }}"
+    data-gift-locked-label="{{ section_settings.gift_locked_label | escape }}"
     style="
       {%- render 'spacing-style', settings: section_settings %}
       --purchase-offers-columns: {{ offer_count }};
@@ -358,9 +372,6 @@
 
     <div class="offer-section__inner purchase-offers__inner">
       <header class="offer-section__header purchase-offers__header">
-        {%- if heading_text != blank -%}
-          <h2 class="offer-section__header-copy purchase-offers__heading {{ section_settings.heading_preset }}">{{ heading_text }}</h2>
-        {%- endif -%}
         {%- if section_settings.subheading != blank -%}
           <p class="offer-section__header-copy purchase-offers__subheading">{{ section_settings.subheading }}</p>
         {%- endif -%}
@@ -571,15 +582,119 @@
         </div>
       </div>
 
-      {%- if section_settings.subscription_note != blank -%}
-        <p
-          class="purchase-offers__note"
-          ref="subscriptionNote"
-          {% if default_plan_key == 'onetime' %}
-            hidden
-          {% endif %}
-        >
-          {{ section_settings.subscription_note }}
+      {%- if gifts.size > 0 -%}
+        {%- liquid
+          assign gift_count = gifts.size
+
+          assign note_subscription = section_settings.gifts_note_subscription | replace: '[count]', gift_count
+          assign note_one_time = section_settings.gifts_note_one_time | replace: '[count]', gift_count
+          assign note_no_subscription = section_settings.gifts_note_no_subscription | replace: '[count]', gift_count
+
+          unless has_subscription
+            assign note_subscription = note_no_subscription
+            assign note_one_time = note_no_subscription
+          endunless
+
+          if default_plan_key == 'onetime'
+            assign note_initial = note_one_time
+          else
+            assign note_initial = note_subscription
+          endif
+        -%}
+        <div class="purchase-offers__gifts">
+          {%- if note_initial != blank -%}
+            <p
+              class="purchase-offers__note"
+              ref="giftsNote"
+              data-subscription-note="{{ note_subscription | escape }}"
+              data-one-time-note="{{ note_one_time | escape }}"
+            >
+              {{ note_initial }}
+            </p>
+          {%- endif -%}
+
+          <ul
+            class="purchase-offers__gift-list"
+            role="list"
+          >
+            {%- for entry in gift_order -%}
+              {%- liquid
+                assign gift_index = entry | split: '-' | last | times: 1
+                assign gift = gifts[gift_index]
+                assign gift_threshold = gift.threshold.value | default: 0
+                assign gift_image = gift.image.value
+
+                assign gift_subscription_only = false
+                if gift.subscription_only.value
+                  assign gift_subscription_only = true
+                endif
+
+                # Server-rendered state matches the default selection so the panel is
+                # correct before the component hydrates.
+                assign gift_unlocked = false
+                if default_total_cents >= gift_threshold
+                  assign gift_unlocked = true
+                endif
+                if gift_subscription_only and default_plan_key == 'onetime'
+                  assign gift_unlocked = false
+                endif
+              -%}
+              <li
+                class="purchase-offers__gift"
+                ref="gifts[]"
+                data-threshold="{{ gift_threshold }}"
+                data-subscription-only="{{ gift_subscription_only }}"
+                data-unlocked="{{ gift_unlocked }}"
+              >
+                <span class="purchase-offers__gift-media">
+                  {%- if gift_image -%}
+                    {{
+                      gift_image
+                      | image_url: width: 400
+                      | image_tag:
+                        loading: 'lazy',
+                        widths: '120, 200, 400',
+                        sizes: '(min-width: 750px) 160px, 30vw',
+                        alt: '',
+                        class: 'purchase-offers__gift-image'
+                    }}
+                  {%- endif -%}
+                </span>
+                {%- if gift.title.value != blank -%}
+                  <span class="purchase-offers__gift-title">{{ gift.title.value }}</span>
+                {%- endif -%}
+                {%- if gift.subtitle.value != blank -%}
+                  <span class="purchase-offers__gift-subtitle">{{ gift.subtitle.value }}</span>
+                {%- endif -%}
+                <span
+                  class="visually-hidden"
+                  ref="giftStatuses[]"
+                >
+                  {%- if gift_unlocked -%}
+                    {{ section_settings.gift_unlocked_label }}
+                  {%- else -%}
+                    {{ section_settings.gift_locked_label }}
+                  {%- endif -%}
+                </span>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- elsif request.design_mode -%}
+        {%- comment -%}
+          Only merchants in the theme editor see this; the storefront stays silent.
+        {%- endcomment -%}
+        <p class="purchase-offers__gifts-empty">
+          {%- if gift_definition == blank -%}
+            No metaobject definition named
+            <strong>{{ gift_type }}</strong>
+            is visible to this theme. Check the type handle above, and make sure the definition has
+            Storefronts access enabled in Settings &rarr; Custom data.
+          {%- else -%}
+            The
+            <strong>{{ gift_type }}</strong>
+            definition was found but has no published entries. Draft entries are not shown.
+          {%- endif -%}
         </p>
       {%- endif -%}
 
@@ -799,7 +914,6 @@
     text-align: center;
   }
 
-  .purchase-offers__heading,
   .purchase-offers__subheading {
     margin: 0;
   }
@@ -1120,13 +1234,86 @@
     font-weight: 400;
   }
 
+  .purchase-offers__gifts-empty {
+    margin: 0;
+    padding: var(--padding-md);
+    border: 1px dashed rgb(var(--purchase-offers-ink-rgb) / var(--opacity-30));
+    border-radius: var(--purchase-offers-radius);
+    color: var(--purchase-offers-muted);
+    font-size: var(--font-size--xs);
+    text-align: center;
+  }
+
+  .purchase-offers__gifts {
+    display: grid;
+    gap: var(--gap-md);
+    padding: var(--padding-lg);
+    border-radius: var(--purchase-offers-radius);
+    background-color: rgb(var(--purchase-offers-accent-rgb) / var(--opacity-10));
+  }
+
+  .purchase-offers__gift-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: var(--gap-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .purchase-offers__gift {
+    display: grid;
+    gap: var(--gap-3xs);
+    justify-items: center;
+    text-align: center;
+  }
+
+  /* Locked gifts stay legible but visibly out of reach. */
+  .purchase-offers__gift[data-unlocked='false'] {
+    opacity: var(--opacity-50);
+    filter: grayscale(1);
+  }
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    .purchase-offers__gift {
+      transition: opacity var(--animation-speed-slow) var(--animation-easing),
+        filter var(--animation-speed-slow) var(--animation-easing);
+    }
+  }
+
+  .purchase-offers__gift-media {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    margin-block-end: var(--margin-2xs);
+    border-radius: var(--purchase-offers-radius);
+    background-color: var(--purchase-offers-surface);
+    overflow: hidden;
+  }
+
+  .purchase-offers__gift-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .purchase-offers__gift-title {
+    font-size: var(--font-size--xs);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .purchase-offers__gift-subtitle {
+    color: var(--purchase-offers-muted);
+    font-size: var(--font-size--2xs);
+    line-height: 1.3;
+  }
+
   .purchase-offers__note {
     margin: 0;
-    padding: var(--padding-xs) var(--padding-md);
-    border-radius: var(--purchase-offers-radius-pill);
-    background-color: rgb(var(--purchase-offers-accent-rgb) / var(--opacity-15));
     color: var(--purchase-offers-accent);
     font-size: var(--font-size--sm);
+    font-weight: 600;
     text-align: center;
   }
 
@@ -1221,31 +1408,6 @@
     {
       "type": "header",
       "content": "Heading"
-    },
-    {
-      "type": "text",
-      "id": "heading",
-      "label": "Heading",
-      "default": "Buy Now to Save Up to [savings]% Off!",
-      "info": "Use [savings] to insert the best available discount percentage."
-    },
-    {
-      "type": "text",
-      "id": "heading_no_savings",
-      "label": "Heading when there is no discount",
-      "default": "Buy Now",
-      "info": "Replaces the heading when the product has no compare-at price, no bundle discount and no discounted selling plan. Leave blank to hide the heading."
-    },
-    {
-      "type": "select",
-      "id": "heading_preset",
-      "label": "Heading size",
-      "options": [
-        { "value": "h2", "label": "Large" },
-        { "value": "h3", "label": "Medium" },
-        { "value": "h4", "label": "Small" }
-      ],
-      "default": "h3"
     },
     {
       "type": "text",
@@ -1417,11 +1579,50 @@
       "default": "Total today"
     },
     {
+      "type": "header",
+      "content": "Free gifts"
+    },
+    {
+      "type": "paragraph",
+      "content": "Gifts are read from the gift_with_purchase metaobject entries (title, subtitle, image, threshold, subscription_only) and unlock cumulatively as the order total passes each threshold."
+    },
+    {
       "type": "text",
-      "id": "subscription_note",
-      "label": "Subscription note",
+      "id": "gift_metaobject_type",
+      "label": "Metaobject type",
+      "default": "gift_with_purchase",
+      "info": "The definition's type handle. It must have Storefronts access enabled and published entries."
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_subscription",
+      "label": "Heading with a subscription",
       "default": "Your subscription includes free gifts today!",
-      "info": "Only shown when a subscription is selected."
+      "info": "Use [count] to insert the number of gifts."
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_one_time",
+      "label": "Heading with a one-time purchase",
+      "default": "Subscribe for up to [count] free gifts"
+    },
+    {
+      "type": "text",
+      "id": "gifts_note_no_subscription",
+      "label": "Heading when the product has no subscription",
+      "default": "Your purchase includes free gifts today!"
+    },
+    {
+      "type": "text",
+      "id": "gift_unlocked_label",
+      "label": "Unlocked gift screen reader text",
+      "default": "Included with your order"
+    },
+    {
+      "type": "text",
+      "id": "gift_locked_label",
+      "label": "Locked gift screen reader text",
+      "default": "Not yet unlocked"
     },
     {
       "type": "header",

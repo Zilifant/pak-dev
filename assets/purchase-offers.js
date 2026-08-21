@@ -5,6 +5,7 @@ import { Component } from '@theme/component';
  * pre-formatted by Liquid so this component never does currency math.
  *
  * @typedef {object} OfferPlanPricing
+ * @property {number} cents - Order total in minor units, for gift threshold comparisons.
  * @property {string} total - Formatted order total.
  * @property {string} [compareAt] - Formatted compare-at total, when there is one.
  * @property {string} perUnit - Formatted price per unit (per tub).
@@ -30,7 +31,9 @@ import { Component } from '@theme/component';
  * @property {HTMLElement} [summaryPerDay] - Price per day.
  * @property {HTMLElement} [summaryTotal] - Order total.
  * @property {HTMLElement} [summaryCompareAt] - Struck-through compare-at total.
- * @property {HTMLElement} [subscriptionNote] - Copy shown only for subscription plans.
+ * @property {HTMLElement} [giftsNote] - Free gift heading, swapped per purchase type.
+ * @property {HTMLElement[]} [gifts] - Free gift items, in threshold order.
+ * @property {HTMLElement[]} [giftStatuses] - Visually hidden unlocked/locked text per gift.
  *
  * @extends {Component<PurchaseOffersRefs>}
  */
@@ -139,9 +142,8 @@ class PurchaseOffersComponent extends Component {
       sellingPlanInput.disabled = !isSubscription;
     }
 
-    const { frequencyField, subscriptionNote } = this.refs;
+    const { frequencyField } = this.refs;
     if (frequencyField) frequencyField.hidden = !isSubscription;
-    if (subscriptionNote) subscriptionNote.hidden = !isSubscription;
 
     if (pricing) {
       this.#setMoney(this.refs.summaryTotal, pricing.total);
@@ -151,6 +153,8 @@ class PurchaseOffersComponent extends Component {
       this.#setSavings(this.refs.summarySavings, pricing.save);
     }
 
+    this.#updateGifts(pricing?.cents ?? 0, isSubscription);
+
     this.refs.cardSavings?.forEach((element) => {
       const cardOffer = this.#offers.find((item) => item.id === Number(element.dataset.offerId));
       const cardPricing = cardOffer && (cardOffer.plans[planKey] ?? cardOffer.plans.onetime);
@@ -159,6 +163,40 @@ class PurchaseOffersComponent extends Component {
     });
 
     this.#updateAddToCart(offer.available);
+  }
+
+  /**
+   * Unlocks the free gifts the current selection qualifies for. Gifts are cumulative, so
+   * every gift at or below the order total unlocks; a subscription-only gift additionally
+   * requires a subscription.
+   *
+   * @param {number} cents - Order total in minor units.
+   * @param {boolean} isSubscription
+   */
+  #updateGifts(cents, isSubscription) {
+    const { giftsNote, gifts, giftStatuses } = this.refs;
+
+    if (giftsNote) {
+      const next = isSubscription ? giftsNote.dataset.subscriptionNote : giftsNote.dataset.oneTimeNote;
+      if (next != null) giftsNote.textContent = next;
+    }
+
+    gifts?.forEach((gift, index) => {
+      if (!(gift instanceof HTMLElement)) return;
+
+      const threshold = Number(gift.dataset.threshold) || 0;
+      const subscriptionOnly = gift.dataset.subscriptionOnly === 'true';
+      const unlocked = cents >= threshold && (!subscriptionOnly || isSubscription);
+
+      gift.dataset.unlocked = String(unlocked);
+
+      const status = giftStatuses?.[index];
+      if (status) {
+        status.textContent = unlocked
+          ? this.dataset.giftUnlockedLabel ?? ''
+          : this.dataset.giftLockedLabel ?? '';
+      }
+    });
   }
 
   /**

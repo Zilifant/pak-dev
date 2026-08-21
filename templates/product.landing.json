@@ -12,8 +12,6 @@
     "purchase_offers": {
       "type": "purchase-offers",
       "settings": {
-        "heading": "Buy Now to Save Up to [savings]% Off!",
-        "heading_preset": "h3",
         "subheading": "Choose Your Offer",
         "subscribe_label": "Subscribe & Save",
         "subscribe_note": "",
@@ -36,7 +34,6 @@
         "per_unit_label": "per [unit]",
         "per_day_label": "per day",
         "total_label": "Total today",
-        "subscription_note": "Your subscription includes free gifts today!",
         "show_nutrition_label": true,
         "nutrition_label_text": "View Nutrition Label",
         "nutrition_heading": "Nutrition label",
@@ -50,7 +47,13 @@
         "on_ink_color": "#ffffff",
         "accent_color": "#b98a4b",
         "padding-block-start": 48,
-        "padding-block-end": 48
+        "padding-block-end": 48,
+        "gifts_note_subscription": "Your subscription includes free gifts today!",
+        "gifts_note_one_time": "Subscribe for up to [count] free gifts",
+        "gifts_note_no_subscription": "Your purchase includes free gifts today!",
+        "gift_unlocked_label": "Included with your order",
+        "gift_locked_label": "Not yet unlocked",
+        "gift_metaobject_type": "gift_with_purchase"
       }
     },
     "ingredient_list_Y8xtrU": {
